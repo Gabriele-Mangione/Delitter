@@ -24,11 +24,11 @@ async fn signup(data: web::Json<SignupData>, db: web::Data<Database>) -> impl Re
     let res = services::auth::signup(db, &data.username, &data.password).await;
 
     match res {
-        Ok(id) => {
+        Ok((id, jwt)) => {
             log::info!("Login successful: {}", id);
 
             web::Json(json!({
-                "id": id,
+                "jwt": jwt,
             }))
         }
         Err(err) => {
