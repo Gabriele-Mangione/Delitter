@@ -5,10 +5,13 @@ use std::{
 };
 
 use actix_web::web;
-use argon2::{Argon2, PasswordHasher};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
-use log::error;
-use mongodb::{Database, bson::oid::ObjectId};
+use log::{error, info};
+use mongodb::{
+    Database,
+    bson::{Document, doc, oid::ObjectId},
+};
 use password_hash::{SaltString, rand_core::OsRng};
 use serde::{Deserialize, Serialize};
 
@@ -65,7 +68,7 @@ pub async fn signup(
     });
 
     if let Err(e) = &jwt {
-        error!("Error when inserting user: {}", e);
+        error!("Error when inserting user / creating jwt: {}", e);
     }
 
     let jwt = jwt.map_err(|_| SignupError::UnknownError)?;
@@ -124,6 +127,38 @@ impl TryInto<ObjectId> for Jwt {
 
         Ok(ObjectId::from_str(id).expect("a valid jwt cannot contain an invalid mongo id"))
     }
+}
+
+pub async fn signin(
+    db: web::Data<Database>,
+    user: &str,
+    password: &str,
+) -> Option<(ObjectId, Jwt)> {
+    let users = db.collection::<User>("users");
+
+    let user: User = users.find_one(doc! { "username": &user }).await.unwrap()?;
+
+    let parsed_hash = PasswordHash::new(&user.password_hash).unwrap();
+    let argon2 = Argon2::default();
+    if argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_err()
+    {
+        info!("Invalid credentials!");
+        return None;
+    }
+
+    let id = user._id.expect("Id is always there when reading");
+    let jwt = Jwt::new(Extras {
+        id: id.to_hex(),
+        username: user.username,
+    });
+
+    if let Err(e) = &jwt {
+        error!("Error when inserting user / creating jwt: {}", e);
+    }
+
+    jwt.ok().map(|jwt| (id, jwt))
 }
 
 struct Entry {
