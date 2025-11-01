@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: npm ci && npm run build
         working-directory: ./code/frontend/
+        env:
+          PUBLIC_BACKEND_URL: https://delitter-backend.onrender.com/v1
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entryPoint: ./code/frontend/

@@ -1,20 +1,20 @@
 <script lang="ts">
     import { auth } from '$lib/stores/auth';
+    import { PUBLIC_BACKEND_URL } from '$env/static/public';
 
     let username = '';
     let password = '';
     let response = '';
     let loading = false;
     let isSignup = true;
-    // TODO: Make this configurable with a .env file
-    const base = "http://localhost:7001";
+    const base = PUBLIC_BACKEND_URL;
 
     async function register() {
         response = '';
         loading = true;
         try {
             const api_route = isSignup ? "signup" : "signin";
-            const api_url = `${base}/v1/public/auth/${api_route}`
+            const api_url = `${base}/public/auth/${api_route}`
             console.log({api_url})
             const res = await fetch(api_url, {
                 method: 'POST',
