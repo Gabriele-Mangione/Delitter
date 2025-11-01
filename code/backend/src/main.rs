@@ -17,6 +17,7 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init();
 
+    env::var("IMAGE_RECOGNITION_URL").expect("IMAGE_RECOGNITION_URL not set");
     let mongo_uri = env::var("MONGO_URI").expect("MONGO_URI not set");
     let client = Client::with_uri_str(&mongo_uri)
         .await

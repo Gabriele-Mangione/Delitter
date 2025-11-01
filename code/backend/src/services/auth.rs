@@ -152,8 +152,6 @@ pub async fn signin(
 impl Jwt {
     fn new(extras: Extras) -> anyhow::Result<Self> {
         let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS512);
-        header.kid = Some("blabla".to_owned());
-
         header.extras = HashMap::with_capacity(1);
         header.extras.insert("id".to_string(), extras.id);
         header
