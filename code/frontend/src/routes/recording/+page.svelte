@@ -91,11 +91,7 @@
 			"lat": lat,
 			"lng": lng,
 			"file": byteArray,
-			"type": mimeType,
-			"category": "",
-			"brand": "",
-			"weight": 100000,
-			"material": ""
+			"type": mimeType
 		}
 
 		try {
