@@ -2,16 +2,17 @@ use actix_web::{
     Responder, get, post,
     web::{self, Json},
 };
+use log::info;
 use mongodb::{
     Database,
-    bson::{doc, oid::ObjectId},
+    bson::{Binary, Bson, doc, oid::ObjectId},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
     handlers::HttpError,
-    models::{self, litter::Litter},
+    models::{self, litter::Litter, user},
     services::auth::UserSession,
 };
 
@@ -32,10 +33,15 @@ pub struct LitterData {
 
 impl Into<Litter> for LitterData {
     fn into(self) -> Litter {
+        let file_binary = Binary {
+            subtype: mongodb::bson::spec::BinarySubtype::Generic, // Set the correct subtype for your use case
+            bytes: self.file.clone(),
+        };
+
         Litter {
             lng: self.lng,
             lat: self.lat,
-            file: self.file,
+            file: Some(file_binary),
             r#type: self.r#type,
             tags: self.tags,
             _id: ObjectId::new(),
@@ -50,6 +56,8 @@ pub async fn create_litter(
     db: web::Data<Database>,
     usersession: UserSession,
 ) -> Result<impl Responder, HttpError> {
+    let file = data.file.clone();
+
     let mut user = match models::user::User::from_id(&db, usersession.id).await {
         Some(u) => u,
         None => {
@@ -57,14 +65,36 @@ pub async fn create_litter(
             return Err(HttpError::InvalidCredentials);
         }
     };
-    let litter: Litter = data.0.into();
+
+    let mut litter: Litter = data.0.into();
     let id = litter._id.to_hex();
-    user.litter.push(litter);
+
+    // Clone what you need because it's moved into the new task
+    // let db_clone = db.clone();
+    user.litter.push(litter.clone());
+
+    // Spawn a new asynchronous task for analysis
     if let Err(e) = user.persist(&db).await {
         log::error!("Failed to persist user: {:?}", e);
         return Err(HttpError::NetworkError);
     }
-    Ok(web::Json(json!({"id": id})))
+
+    tokio::spawn(async move {
+        // Call your analyze function
+        let res = crate::services::analyzer::analyze(file).await.unwrap();
+
+        for obj in res {
+            litter.tags.push(format!(
+                "Category {}  Material {}  Weigth{} (g) Brand{}",
+                obj.category, obj.material, obj.weight_g_estimate, obj.brand
+            ));
+        }
+
+        let _ = litter.persist(&db, usersession.id).await;
+    });
+
+    // Immediately return the ID to the client
+    Ok(web::Json(json!({ "id": id })))
 }
 
 #[derive(Debug, Serialize)]
@@ -83,7 +113,7 @@ impl Into<LitterGetData> for Litter {
         LitterGetData {
             lat: self.lat,
             lng: self.lng,
-            file: self.file,
+            file: self.file.map(|f| f.bytes).unwrap_or_default(),
             r#type: self.r#type,
             tags: self.tags,
             id: self._id.to_hex(),
@@ -91,15 +121,7 @@ impl Into<LitterGetData> for Litter {
         }
     }
 }
-/*
- * Body: Json {
- *    lat: number,
- *    lng: number,
- *    file: []bytes
- *    type: "png" | "jpeg"
- *    tags: []string
- * }
- */
+
 #[get("/v1/protected/litter")]
 pub async fn get_litter(
     db: web::Data<Database>,
