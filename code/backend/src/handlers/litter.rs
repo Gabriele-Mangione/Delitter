@@ -28,10 +28,6 @@ pub struct LitterData {
     lng: f64,
     #[schema(format = "binary")]
     file: Vec<u8>,
-    category: String,
-    material: String,
-    weight: f64,
-    brand: String,
     r#type: String,
 }
 
@@ -47,10 +43,10 @@ impl Into<Litter> for LitterData {
             lat: self.lat,
             file: Some(file_binary),
             r#type: self.r#type,
-            category: self.category,
-            material: self.material,
-            weight: self.weight,
-            brand: self.brand,
+            category: "".to_string(),
+            material: "".to_string(),
+            weight: 0.,
+            brand: "".to_string(),
             _id: ObjectId::new(),
             time_stamp: mongodb::bson::DateTime::now(),
         }
