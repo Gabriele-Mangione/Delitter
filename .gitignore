@@ -3,3 +3,4 @@
 
 open_ai.key
 data/*
+.DS_Store
