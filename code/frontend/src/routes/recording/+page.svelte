@@ -49,7 +49,6 @@
 		isWaitingForUpload = true;
 		if (longitude && latitude) {
 			sendLitterRequest(canvasElement, latitude, longitude);
-			isWaitingForUpload = false;
 		} else {
 			console.error("No geolocation data available.");
 			isWaitingForLocation = true;
@@ -64,8 +63,6 @@
 				console.error("Error obtaining geolocation:", err);
 				uploadFailed = true;
             });
-
-            isWaitingForUpload = false;
 		}
     }
 
