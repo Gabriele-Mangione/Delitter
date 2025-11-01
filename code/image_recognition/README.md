@@ -55,11 +55,11 @@ The CLI shows processing time and outputs the analysis as JSON.
 Start the API server:
 
 ```bash
-# Development mode with auto-reload
-uvicorn image_recognition.api:app --reload
+# From within the image_recognition directory
+uvicorn api:app --reload
 
 # Production mode
-uvicorn image_recognition.api:app --host 0.0.0.0 --port 8000
+uvicorn api:app --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000`
@@ -100,6 +100,42 @@ docker build -t litter-analysis-api .
 
 # Verify the image was created
 docker images | grep litter-analysis-api
+```
+
+#### Building behind a corporate proxy
+
+If you're building behind a corporate HTTP/HTTPS proxy, pass the proxy values as build args so the image can access PyPI during the build. Example:
+
+```bash
+# Example using environment variables already set in your shell
+docker build \
+  --build-arg HTTP_PROXY="$HTTP_PROXY" \
+  --build-arg HTTPS_PROXY="$HTTPS_PROXY" \
+  -t litter-analysis-api .
+
+# Or specify them inline (replace with your proxy)
+docker build \
+  --build-arg HTTP_PROXY="http://proxy.corp:8080" \
+  --build-arg HTTPS_PROXY="http://proxy.corp:8080" \
+  -t litter-analysis-api .
+```
+
+At runtime you can either pass the OpenAI key and any proxy environment variables directly:
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  -e OPENAI_API_KEY="your-api-key-here" \
+  -e HTTP_PROXY="$HTTP_PROXY" \
+  -e HTTPS_PROXY="$HTTPS_PROXY" \
+  --name litter-api \
+  litter-analysis-api
+```
+
+Or use an --env-file with the variables listed (keep it out of VCS):
+
+```bash
+docker run -d --env-file .env -p 8000:8000 --name litter-api litter-analysis-api
 ```
 
 ### Run the Container
