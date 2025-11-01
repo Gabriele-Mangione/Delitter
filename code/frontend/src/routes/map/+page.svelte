@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
-  // import { base } from '$app/paths'; // use if you deploy under a base path
   import 'leaflet/dist/leaflet.css';
 
+  // --- types & demo data ---
   type Finding = {
     id: string;
     lat: number;
@@ -20,25 +20,32 @@
     { id: '3', lat: 47.5584, lng: 7.5920, weight: 20, category: 'Plastic Bottle', material: 'Plastic', brand: 'Fanta' }
   ];
 
+  // --- leaflet refs ---
   let mapDiv: HTMLDivElement;
   let map: any;
   let markersLayer: any;
   let L: any;
   let delitterIcon: any;
 
+  // user location layers
+  let userMarker: any = null;
+  let userAccuracy: any = null;
+  let geoWatchId: number | null = null;
+
   // --- helpers ---
   function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
   }
+
   function popupHtml(f: Finding) {
     const brand = f.brand ? `<span class="badge badge-outline">${escapeHtml(f.brand)}</span>` : '';
     const material = `<span class="badge badge-success badge-outline">${escapeHtml(f.material)}</span>`;
     const weight = f.weight != null ? `<span class="text-xs text-base-content/60">${f.weight} g</span>` : '';
     return `
-      <div class="card w-72 bg-base-100">
+      <div class="card bg-base-100">
         <div class="card-body p-4">
           <h3 class="card-title text-base">${escapeHtml(f.category)}</h3>
-          <div class="flex flex-wrap gap-2 items-center">
+          <div class="flex flex-wrap items-center gap-2">
             ${brand}
             ${material}
             ${weight}
@@ -59,7 +66,7 @@
       });
 
       m.bindPopup(popupHtml(f), {
-        className: 'dl-popup',     // lets us tweak wrapper minimally via :global CSS
+        className: 'dl-popup',
         maxWidth: 320,
         offset: [0, -6]
       });
@@ -73,23 +80,69 @@
     }
   }
 
-  function locateMe() {
+  // geolocation watch: pulsing dot + accuracy circle
+  function startLocateWatch(centerOnce = true) {
     if (!browser || !map || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 15),
+    if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
+
+    const userIcon = L.divIcon({
+      className: 'dl-user',
+      html: '<span class="pulse"></span><span class="dot"></span>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+
+    geoWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        const ll: [number, number] = [latitude, longitude];
+
+        if (!userMarker) userMarker = L.marker(ll, { icon: userIcon }).addTo(map);
+        else userMarker.setLatLng(ll);
+
+        if (!userAccuracy) {
+          userAccuracy = L.circle(ll, {
+            radius: accuracy,
+            color: '#3b82f6',
+            weight: 1,
+            fillColor: '#3b82f6',
+            fillOpacity: 0.1
+          }).addTo(map);
+        } else {
+          userAccuracy.setLatLng(ll);
+          userAccuracy.setRadius(accuracy);
+        }
+
+        if (centerOnce) {
+          map.setView(ll, 15);
+          centerOnce = false;
+        }
+      },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 30000, timeout: 5000 }
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
     );
   }
+
+  function stopLocateWatch() {
+    if (geoWatchId) {
+      navigator.geolocation.clearWatch(geoWatchId);
+      geoWatchId = null;
+    }
+    if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+    if (userAccuracy) { map.removeLayer(userAccuracy); userAccuracy = null; }
+  }
+
+  // one-click helper
+  function locateMe() { startLocateWatch(true); }
 
   onMount(async () => {
     if (!browser) return;
     const mod = await import('leaflet');
     L = mod.default;
 
-    // custom marker / pin (ensure file exists in /static/icons/)
+    // custom SVG pin (ensure it exists in /static/icons/)
     delitterIcon = L.icon({
-      iconUrl: '/icons/litter-pin.svg',            // or: `${base}/icons/litter-pin.svg`
+      iconUrl: '/icons/litter-pin.svg',
       iconSize: [28, 40],
       iconAnchor: [14, 40],
       popupAnchor: [0, -36]
@@ -114,39 +167,67 @@
 
     markersLayer = L.layerGroup().addTo(map);
     renderMarkers(demoFindings);
-    locateMe(); // optional
+
+    // optional: center to user & keep updating
+    locateMe();
   });
 
-  onDestroy(() => { if (map) map.remove(); });
+  onDestroy(() => {
+    if (map) map.remove();
+    stopLocateWatch();
+  });
 </script>
 
 <div class="page h-screen flex flex-col bg-base-100">
   <div class="toolbar flex items-center gap-2 p-2 border-b border-base-200">
-    <button class="btn btn-sm btn-accent" on:click={locateMe}>Locate me</button>
+    <button class="btn btn-sm btn-accent" on:click={locateMe}>My location</button>
+    <button class="btn btn-sm" on:click={stopLocateWatch}>Stop</button>
   </div>
 
   <div class="map grow min-h-[60vh]" bind:this={mapDiv} aria-label="Delitter map"></div>
 </div>
 
 <style>
-
+  /* Leaflet container sizing */
   :global(.leaflet-container) {
     width: 100%;
     height: 100%;
     font-family: system-ui, sans-serif;
   }
 
-  /* popup */
-  :global(.dl-popup .leaflet-popup-content) { margin: 0; padding: 0; }
-  :global(.dl-popup .leaflet-popup-content-wrapper) {
-    background: hsl(var(--b1));
-    border-radius: 0.75rem;
-    border: 1px solid hsl(var(--b2) / 0.2);
-    box-shadow: 0 8px 24px hsl(var(--bc) / 0.08);
+  /* Popup wrapper → let the daisyUI card define size */
+  :global(.dl-popup .leaflet-popup-content){margin:0;padding:0;}
+  :global(.dl-popup .leaflet-popup-content-wrapper){
+    background: var(--color-base-100);
+    border-radius: .75rem;
+    border: 1px solid color-mix(in oklch, var(--color-base-200) 60%, transparent);
+    box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 8%, transparent);
     padding: 0;
   }
-  :global(.dl-popup .leaflet-popup-tip) {
-    background: hsl(var(--b1));
-    box-shadow: 0 8px 24px hsl(var(--bc) / 0.06);
+  :global(.dl-popup .leaflet-popup-tip){
+    background: var(--color-base-100);
+    box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 6%, transparent);
   }
+  
+  /* “My location” pulsing dot */
+  :global(.dl-user){position:relative;}
+  :global(.dl-user .dot){
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:10px;height:10px;border-radius:9999px;
+    background: var(--color-accent);
+    border:2px solid var(--color-base-100);
+    box-shadow:0 1px 4px color-mix(in oklch, var(--color-base-content) 25%, transparent);
+  }
+  :global(.dl-user .pulse){
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:18px;height:18px;border-radius:9999px;
+    background: color-mix(in oklch, var(--color-accent) 35%, transparent);
+    animation: dl-pulse 1.6s ease-out infinite;
+  }
+  @keyframes dl-pulse{
+    0%{transform:translate(-50%,-50%) scale(.4);opacity:.7}
+    70%{transform:translate(-50%,-50%) scale(1.4);opacity:.05}
+    100%{opacity:0}
+  }
+
 </style>
