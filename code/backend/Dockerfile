@@ -2,15 +2,30 @@ FROM rust:1.89-bullseye AS builder
 
 WORKDIR /usr/src/myapp
 
-# Copy full source
-COPY . .
-
 # Install required tools and dependencies
 RUN set -eux; \
 	apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl build-essential pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
+# Set build optimization environment variables
+ENV CARGO_INCREMENTAL=0 \
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse \
+    CARGO_TERM_COLOR=always
+
+# Copy manifests first for dependency caching
+COPY Cargo.toml Cargo.lock ./
+
+# Create a dummy src to build dependencies (cached layer)
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs && \
+    cargo build --release --locked && \
+    rm -rf src
+
+# Copy full source
+COPY . .
+
+# Build the actual application (only rebuilds if source changed)
 RUN set -eux; \
-	cargo build --release
+	cargo build --release --locked
 
 FROM debian:bullseye-slim
 
