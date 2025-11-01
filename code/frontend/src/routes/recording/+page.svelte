@@ -1,13 +1,21 @@
 <script lang="ts">
-	import {onMount} from "svelte";
+	import {onDestroy, onMount} from "svelte";
 	import {PUBLIC_BACKEND_URL} from "$env/static/public";
 	import {browser} from "$app/environment";
 
+	// State variables
 	let isCameraActive = false;
+	let isWaitingForUpload = false;
+	let isWaitingForLocation = false;
+	let uploadFailed = false;
+
+	// Camera
 	let capturedImage: string | null = null;
 	let stream: MediaStream | null = null;
 	let videoElement: HTMLVideoElement;
 	let canvasElement: HTMLCanvasElement;
+
+	// Geolocation
 	let geoWatchId: number | null = null;
 	let latitude: number | null = null;
 	let longitude: number | null = null;
@@ -33,14 +41,29 @@
 			context?.drawImage(videoElement, 0, 0);
 			capturedImage = canvasElement.toDataURL('image/png');
 			stopCamera();
-
-			if (longitude && latitude) {
-				sendLitterRequest(canvasElement, latitude, longitude);
-            } else {
-				// TODO
-            }
+            upload();
 		}
 	}
+
+	function upload() {
+		isWaitingForUpload = true;
+		if (longitude && latitude) {
+			sendLitterRequest(canvasElement, latitude, longitude);
+			isWaitingForUpload = false;
+		} else {
+			isWaitingForLocation = true;
+			console.error("No geolocation data available.");
+            navigator.geolocation.getCurrentPosition((position) =>
+            {
+				const { longitude: lng, latitude: lat } = position.coords;
+                sendLitterRequest(canvasElement, lng, lat)
+            }, (err) => {
+				console.error("Error obtaining geolocation:", err);
+				uploadFailed = true;
+            });
+            isWaitingForUpload = false;
+		}
+    }
 
 	function stopCamera() {
 		if (stream) {
@@ -161,6 +184,18 @@
                 </svg>
                 Take Picture
             </button>
+        {/if}
+
+        {#if isWaitingForUpload}
+            <span class="ml-4">Waiting for upload...</span>
+        {/if}
+
+        {#if isWaitingForLocation}
+            <span class="ml-4">Waiting for location...</span>
+        {/if}
+
+        {#if uploadFailed}
+            <span class="ml-4">Upload failed</span>
         {/if}
 
         {#if capturedImage}
