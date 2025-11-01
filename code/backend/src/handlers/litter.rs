@@ -50,9 +50,13 @@ pub async fn create_litter(
     db: web::Data<Database>,
     usersession: UserSession,
 ) -> Result<impl Responder, HttpError> {
-    let mut user = models::user::User::from_id(&db, usersession.id)
-        .await
-        .unwrap();
+    let mut user = match models::user::User::from_id(&db, usersession.id).await {
+        Some(u) => u,
+        None => {
+            log::info!("Not logged in!");
+            return Err(HttpError::InvalidCredentials);
+        }
+    };
     let litter: Litter = data.0.into();
     let id = litter._id.to_hex();
     user.litter.push(litter);
@@ -98,9 +102,13 @@ pub async fn get_litter(
     db: web::Data<Database>,
     usersession: UserSession,
 ) -> Result<Json<Vec<LitterGetData>>, HttpError> {
-    let user = models::user::User::from_id(&db, usersession.id)
-        .await
-        .unwrap();
+    let user = match models::user::User::from_id(&db, usersession.id).await {
+        Some(u) => u,
+        None => {
+            log::info!("Not logged in!");
+            return Err(HttpError::InvalidCredentials);
+        }
+    };
     Ok(web::Json(
         user.litter.into_iter().map(|l| l.into()).collect(),
     ))
