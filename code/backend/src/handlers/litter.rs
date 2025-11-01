@@ -79,7 +79,6 @@ pub async fn create_litter(
     usersession: UserSession,
 ) -> Result<impl Responder, HttpError> {
     let file = data.file.clone();
-    //let file :Vec<u8> = fs::read("C:/Users/Gabri/Downloads/IMG_1875.jpg").unwrap();
 
     let mut user = match models::user::User::from_id(&db, usersession.id).await {
         Some(u) => u,
@@ -104,13 +103,28 @@ pub async fn create_litter(
 
     tokio::spawn(async move {
         // Call your analyze function
-        let res = crate::services::analyzer::analyze(file).await.unwrap();
+        let res = match crate::services::analyzer::analyze(file).await {
+            Ok(r) => r,
+            Err(e) => {
+                log::error!("Error while analysing image{}", e);
+                return;
+            }
+        };
 
         for obj in res {
-            litter.category = obj.category;
-            litter.material = obj.material;
+            litter.category = match obj.category {
+                Some(o) => o,
+                None => "unknown".to_string(),
+            };
+            litter.material = match obj.material {
+                Some(o) => o,
+                None => "unknown".to_string(),
+            };
             litter.weight = obj.weight_g_estimate;
-            litter.brand = obj.brand;
+            litter.brand = match obj.brand {
+                Some(o) => o,
+                None => "unknown".to_string(),
+            };
             // litter.tags.push(format!(
             //     "Category {}  Material {}  Weigth{} (g) Brand{}",
             //     obj.category, obj.material, obj.weight_g_estimate, obj.brand

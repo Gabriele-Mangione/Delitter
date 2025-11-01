@@ -1,13 +1,21 @@
 <script lang="ts">
-	import {onMount} from "svelte";
+	import {onDestroy, onMount} from "svelte";
 	import {PUBLIC_BACKEND_URL} from "$env/static/public";
 	import {browser} from "$app/environment";
 
+	// State variables
 	let isCameraActive = false;
+	let isWaitingForUpload = false;
+	let isWaitingForLocation = false;
+	let uploadFailed = false;
+
+	// Camera
 	let capturedImage: string | null = null;
 	let stream: MediaStream | null = null;
 	let videoElement: HTMLVideoElement;
 	let canvasElement: HTMLCanvasElement;
+
+	// Geolocation
 	let geoWatchId: number | null = null;
 	let latitude: number | null = null;
 	let longitude: number | null = null;
@@ -33,14 +41,29 @@
 			context?.drawImage(videoElement, 0, 0);
 			capturedImage = canvasElement.toDataURL('image/png');
 			stopCamera();
-
-			if (longitude && latitude) {
-				sendLitterRequest(canvasElement, latitude, longitude);
-            } else {
-				// TODO
-            }
+            upload();
 		}
 	}
+
+	function upload() {
+		isWaitingForUpload = true;
+		if (longitude && latitude) {
+			sendLitterRequest(canvasElement, latitude, longitude);
+			isWaitingForUpload = false;
+		} else {
+			isWaitingForLocation = true;
+			console.error("No geolocation data available.");
+            navigator.geolocation.getCurrentPosition((position) =>
+            {
+				const { longitude: lng, latitude: lat } = position.coords;
+                sendLitterRequest(canvasElement, lat, lng)
+            }, (err) => {
+				console.error("Error obtaining geolocation:", err);
+				uploadFailed = true;
+            });
+            isWaitingForUpload = false;
+		}
+    }
 
 	function stopCamera() {
 		if (stream) {
@@ -72,7 +95,10 @@
 	}
 
 	async function uploadAsJson(byteArray, mimeType, lat, lng) {
-		const base = PUBLIC_BACKEND_URL;
+        // So we can see the picture shortly after it has been taken.
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const base = PUBLIC_BACKEND_URL;
 		const api_url = `${base}/protected/litter`
 
         const payload = {
@@ -134,25 +160,37 @@
 	})
 </script>
 
-<div class="h-center flex flex-col justify-center items-center">
+<div class="relative h-full flex flex-col justify-center items-center">
+    <canvas
+            class="absolute"
+            bind:this={canvasElement}
+            style="display: none;"
+    ></canvas>
 
-    <div class="flex-row mb-8">
-        <video bind:this={videoElement} playsinline
-               muted
-               autoplay style="display: {isCameraActive ? 'block' : 'none'}"></video>
-        <canvas bind:this={canvasElement} style="display: none;"></canvas>
-
+    <div class="w-full flex justify-center">
         {#if capturedImage}
-            <img src={capturedImage} alt="Captured litter" />
+            <img src={capturedImage} alt="Captured litter"
+                 class="inline-block h-auto max-h-[400px] object-contain rounded-xl border-4 border-black"/>
+        {:else}
+            <video
+                    bind:this={videoElement}
+                    playsinline
+                    muted
+                    autoplay
+                    class="inline-block h-auto max-h-[400px] object-contain rounded-xl border-4 border-base-300"
+                    style="display: {isCameraActive ? 'block' : 'none'}"
+            ></video>
         {/if}
     </div>
 
-    <div class="controls flex-row">
+
+    <div class="controls flex-row mt-3">
         {#if !isCameraActive && !capturedImage}
             <button class="btn btn-secondary flex justify-center" on:click={startCamera}>Allow Camera</button>
         {:else if isCameraActive}
             <button class="btn btn-secondary" on:click={takePicture}>
-                <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="1.5"
                      stroke="currentColor">
                     <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                           d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z"/>
@@ -161,6 +199,18 @@
                 </svg>
                 Take Picture
             </button>
+        {/if}
+
+        {#if isWaitingForUpload}
+            <span class="ml-4">Waiting for upload...</span>
+        {/if}
+
+        {#if isWaitingForLocation}
+            <span class="ml-4">Waiting for location...</span>
+        {/if}
+
+        {#if uploadFailed}
+            <span class="ml-4">Upload failed</span>
         {/if}
 
         {#if capturedImage}
