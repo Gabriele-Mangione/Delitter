@@ -71,10 +71,6 @@
 			"lng": 2.0,
 			"file": byteArray,
 			"type": mimeType,
-			"tags": [
-				"can",
-				"Fanta"
-			]
 		}
 
 		try {
