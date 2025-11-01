@@ -92,7 +92,6 @@
 			"lng": lng,
 			"file": byteArray,
 			"type": mimeType,
-            "tags": []
 		}
 
 		try {
