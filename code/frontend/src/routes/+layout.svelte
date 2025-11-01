@@ -5,9 +5,6 @@
     import NavBar from "$lib/NavBar.svelte";
     import LoginRegister from "$lib/LoginRegister.svelte";
 
-    import { onMount } from 'svelte';
-    
-
     // Authentication
     import { auth } from '$lib/stores/auth';
     $: loggedIn = $auth !== null;
