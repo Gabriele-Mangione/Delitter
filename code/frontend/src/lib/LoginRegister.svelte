@@ -94,9 +94,5 @@
         <button on:click={toggleSignup} class="text-sm text-center link-primary cursor-pointer">
             {isSignup ? 'Already have an account? Log in' : "Don't have an account? Register"}
         </button>
-
-        <button on:click={() => auth.setToken("todo")} class="text-sm text-center link-primary cursor-pointer">
-            Just log me in !!!
-        </button>
     </div>
 </div>

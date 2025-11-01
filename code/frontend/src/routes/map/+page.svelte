@@ -3,19 +3,12 @@
   import { browser } from '$app/environment';
   import 'leaflet/dist/leaflet.css';
 
-  // --- types & demo data ---
-  type Finding = {
-    id: string;
-    lat: number;
-    lng: number;
-    weight: number | null;
-    category: string;
-    material: string;
-    brand?: string | null;
-  };
+  import { PUBLIC_BACKEND_URL } from '$env/static/public';
+  import { auth } from '$lib/stores/auth';
+  import { get } from 'svelte/store';
 
   const demoFindings: Finding[] = [
-    { id: '1', lat: 47.5596, lng: 7.5886, weight: 20, category: 'Beverage Can', material: 'Aluminium', brand: 'Smirnoff' },
+    { id: '1', lat: 47.5596, lng: 7.5886, weight: 40, category: 'Beverage Can', material: 'Aluminium', brand: 'Smirnoff' },
     { id: '2', lat: 47.5591, lng: 7.5859, weight: 20, category: 'Snack Wrapper', material: 'Plastic' },
     { id: '3', lat: 47.5584, lng: 7.5920, weight: 20, category: 'Plastic Bottle', material: 'Plastic', brand: 'Fanta' }
   ];
@@ -78,6 +71,45 @@
       const bounds = L.latLngBounds(findings.map((f) => [f.lat, f.lng]));
       map.fitBounds(bounds.pad(0.2), { animate: false });
     }
+  }
+
+  // load findings from backend
+  async function loadFindings() {
+    const BASE = (PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
+    const token = (auth.getToken?.() ?? get(auth)) as string | null;
+
+    const url = `${BASE}/protected/litter`; // NOTE: /v1 is already in BASE
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('jwt')}`
+      }
+    });
+
+    if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+
+    const apiData: Array<{
+      id?: string;
+      lat: number;
+      lng: number;
+      weight?: number | null;
+      category: string;
+      material: string;
+      brand?: string | null;
+    }> = await res.json();
+
+    const items: Finding[] = apiData.map((d) => ({
+      id: d.id ?? `${d.lat},${d.lng}`,
+      lat: d.lat,
+      lng: d.lng,
+      weight: d.weight ?? null,
+      category: d.category,
+      material: d.material,
+      brand: d.brand ?? null
+    }));
+    console.log('Loaded findings from backend:', items);
+    renderMarkers(items);
   }
 
   // geolocation watch: pulsing dot + accuracy circle
@@ -166,10 +198,15 @@
     cartoVoyager.addTo(map);
 
     markersLayer = L.layerGroup().addTo(map);
-    renderMarkers(demoFindings);
 
-    // optional: center to user & keep updating
-    locateMe();
+    try {
+      await loadFindings();         // ← now loads from backend
+    } catch (e) {
+      console.warn('Backend fetch failed, showing demo markers.', e);
+      renderMarkers(demoFindings);  // fallback
+    }
+
+    locateMe(); // optional geolocate
   });
 
   onDestroy(() => {
@@ -229,5 +266,4 @@
     70%{transform:translate(-50%,-50%) scale(1.4);opacity:.05}
     100%{opacity:0}
   }
-
 </style>
