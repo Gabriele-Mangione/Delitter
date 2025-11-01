@@ -4,6 +4,11 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		%sveltekit.head%
+
+		<!-- PWA Support -->
+		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		<title>My Offline App!</title>
+		<link rel="icon" href="%sveltekit.assets%/src/lib/assets/favicon.svg" />
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>

@@ -1,0 +1,15 @@
+{
+	"name": "Delitter",
+	"short_name": "delitter",
+	"start_url": "/",
+	"display": "standalone",
+	"theme_color": "#ffffff",
+	"background_color": "#000000",
+	"icons": [
+		{
+			"src": "/src/lib/assets/favicon.svg",
+		    "type": "image/png",
+		    "sizes": "144x144"
+		}
+	]
+}
