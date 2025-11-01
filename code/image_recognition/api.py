@@ -117,9 +117,13 @@ async def analyze_litter_image(
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Image file not found")
     except Exception as e:
+        import traceback
+        error_details = f"{type(e).__name__}: {str(e)}"
+        print(f"[ERROR] {error_details}")
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing image: {str(e)}"
+            detail=f"Error processing image: {error_details}"
         )
 
 
