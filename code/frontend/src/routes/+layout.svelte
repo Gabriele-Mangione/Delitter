@@ -16,15 +16,20 @@
 
 
 {#if loggedIn}
-    <NavBar/>
-    <div class="m-2 main-content-area">
-        <slot/>
-    </div>
-    <div class="spacer"></div>
-    <Dock/>
+  <!-- keep the nav on top of Leaflet controls -->
+  <header class="sticky top-0 z-[2000] bg-base-100">
+    <NavBar />
+  </header>
+
+  <div class="m-2 mb-[64px]">
+    <slot/>
+  </div>
+
+  <Dock/>
 {:else}
-    <LoginRegister/>
+  <LoginRegister/>
 {/if}
+
 
 <style>
     .spacer {
