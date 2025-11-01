@@ -10,11 +10,7 @@ from typing import Dict
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Support both direct execution and module execution
-try:
-    from .model_output_structure import LitterAnalysis, LitterDetection
-except ImportError:
-    from model_output_structure import LitterAnalysis, LitterDetection
+from model_output_structure import LitterAnalysis, LitterDetection
 
 # --- Load environment variables ---
 load_dotenv()

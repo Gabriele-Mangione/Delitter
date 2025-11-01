@@ -7,13 +7,7 @@ from typing import List
 
 from pydantic import ValidationError
 from bounding_box import draw_boxes_pil
-
-
-# Support both direct execution and module execution
-try:
-    from .analyzer import analyze_image
-except ImportError:
-    from analyzer import analyze_image
+from analyzer import analyze_image
 
 
 def main(argv: List[str]) -> None:
