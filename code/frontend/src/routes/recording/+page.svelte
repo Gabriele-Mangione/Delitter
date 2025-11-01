@@ -10,8 +10,8 @@
 
 	const locationOptions = {
 		enableHighAccuracy: true,
-		timeout: 5000,
-		maximumAge: 0,
+		timeout: 10000,
+		maximumAge: 10000,
 	};
 
 	function success(pos) {
