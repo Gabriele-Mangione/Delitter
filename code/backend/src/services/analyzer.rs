@@ -1,13 +1,13 @@
 use std::env;
 
-use log::debug;
+use log::{debug, error, info, log};
 use reqwest::Client;
 use reqwest::multipart::{Form, Part};
 
 use serde::{Deserialize, Serialize};
 
 pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std::error::Error>> {
-    //let bytes = std::fs::read(std::path::Path::new("C:/Users/Gabri/Downloads/IMG_1875.jpg"))?;
+    info!("image vec size: {}", bytes.len());
     let part = Part::bytes(bytes) // replace with bytes
         .file_name("image.jpg")
         .mime_str("image/jpg")?;
@@ -28,7 +28,13 @@ pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std:
 
     debug!("{response}");
 
-    let response: Response = serde_json::from_str(&response)?;
+    let response: Response = match serde_json::from_str(&response){
+        Ok(r) => r,
+        Err(e) => {
+            error!("Error while parsing image {}", e);
+            return Err(Box::new(e));
+        }
+    };
 
     Ok(response.analysis.objects)
 }
@@ -50,9 +56,9 @@ pub struct Analysis {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DetectedObject {
-    pub category: String,
-    pub material: String,
+    pub category: Option<String>,
+    pub material: Option<String>,
     pub weight_g_estimate: f64,
-    pub brand: String,
+    pub brand: Option<String>,
     pub confidence: f64,
 }
