@@ -3,6 +3,8 @@ name: Build and Publish image_recognition
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'code/image_recognition/**'
   workflow_dispatch: {}
 
 permissions:
