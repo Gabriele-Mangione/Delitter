@@ -3,6 +3,7 @@ use actix_web::{
     web::{self},
 };
 use dotenvy::dotenv;
+use log::info;
 use mongodb::Client;
 use std::env;
 
@@ -22,6 +23,8 @@ async fn main() -> std::io::Result<()> {
     let db_name = "main";
     let db = client.database(&db_name);
 
+    info!("App listening over 0.0.0.0:8080");
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db.clone()))
@@ -30,7 +33,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::litter::create_litter)
             .service(handlers::litter::get_litter)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }
