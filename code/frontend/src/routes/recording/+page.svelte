@@ -1,5 +1,6 @@
 <script lang="ts">
 	import {onMount} from "svelte";
+	import {PUBLIC_BACKEND_URL} from "$env/static/public";
 
 	let isCameraActive = false;
 	let capturedImage: string | null = null;
@@ -38,12 +39,62 @@
 		}
 	}
 
-	function downloadPicture() {
-		if (capturedImage) {
-			const a = document.createElement('a');
-			a.href = capturedImage;
-			a.download = `litter-${Date.now()}.png`;
-			a.click();
+	function sendLitterRequest(canvas) {
+		canvas.toBlob(async (blob) => {
+			if (!blob) {
+				console.error("Failed to create blob from canvas.");
+				return;
+			}
+
+			const reader = new FileReader();
+
+			// When the file is read as an ArrayBuffer
+			reader.onloadend = () => {
+				const arrayBuffer = reader.result;
+				const byteArray = new Uint8Array(arrayBuffer);
+				console.log("Image converted to Uint8Array. Size:", byteArray.length, "bytes.");
+				uploadAsJson(Array.from(byteArray), blob.type);
+			};
+
+			reader.readAsArrayBuffer(blob);
+
+		}, 'image/jpeg', 0.9);
+	}
+
+	async function uploadAsJson(byteArray, mimeType) {
+		const base = PUBLIC_BACKEND_URL;
+		const api_url = `${base}/protected/litter`
+
+        const payload = {
+			"lat": 1.0,
+			"lng": 2.0,
+			"file": byteArray,
+			"type": mimeType,
+			"tags": [
+				"can",
+				"Fanta"
+			]
+		}
+
+		try {
+			const response = await fetch(api_url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('jwt')}`
+				},
+				body: JSON.stringify(payload)
+			});
+
+			if (response.ok) {
+				console.log('Image successfully sent.');
+				const result = await response.json(); // Or response.text()
+				console.log('Server response:', result);
+			} else {
+				console.error(`Upload failed: ${response.status} ${response.statusText}`);
+			}
+		} catch (error) {
+			console.error('Error sending image:', error);
 		}
 	}
 
@@ -80,8 +131,8 @@
         {/if}
 
         {#if capturedImage}
-            <button class="btn bg-green-800" on:click={downloadPicture}>Download Picture</button>
-            <button class="btn bg-green-800" on:click={() => { capturedImage = null; startCamera(); }}>Take Another</button>
+            <button class="btn bg-green-800" on:click={sendLitterRequest(canvasElement)}>Upload</button>
+            <button class="btn bg-green-800" on:click={() => { capturedImage = null; startCamera(); }}>Retry</button>
         {/if}
     </div>
 
