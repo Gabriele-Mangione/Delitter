@@ -4,10 +4,18 @@ use actix_web::{
     web::{self, Json},
 };
 use serde_json::json;
+use utoipa::ToSchema;
 
 use derive_more::derive::{Display, Error};
 pub mod auth;
 pub mod litter;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorResponse {
+    message: String,
+}
+
+use serde::Serialize;
 
 #[derive(Debug, Display, Error)]
 pub enum HttpError {
@@ -38,6 +46,21 @@ impl ResponseError for HttpError {
     }
 }
 
+#[get("/")]
+pub async fn root_redirect() -> impl Responder {
+    HttpResponse::Found()
+        .append_header(("Location", "/docs/"))
+        .finish()
+}
+
+#[utoipa::path(
+    get,
+    path = "/v1/alive",
+    responses(
+        (status = 200, description = "Server is alive")
+    ),
+    tag = "Health"
+)]
 #[get("/v1/alive")]
 pub async fn alive() -> impl Responder {
     web::Html::new("OK".to_string())

@@ -2,30 +2,31 @@ use actix_web::{
     Responder, get, post,
     web::{self, Json},
 };
-use log::info;
 use mongodb::{
     Database,
-    bson::{Binary, Bson, doc, oid::ObjectId},
+    bson::{Binary, doc, oid::ObjectId},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use utoipa::ToSchema;
 
 use crate::{
     handlers::HttpError,
-    models::{self, litter::Litter, user},
+    models::{self, litter::Litter},
     services::auth::UserSession,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Claims {
     sub: String,
     exp: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LitterData {
     lat: f64,
     lng: f64,
+    #[schema(format = "binary")]
     file: Vec<u8>,
     r#type: String,
     tags: Vec<String>,
@@ -50,6 +51,25 @@ impl Into<Litter> for LitterData {
     }
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct LitterCreateResponse {
+    id: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/protected/litter",
+    request_body = LitterData,
+    responses(
+        (status = 200, description = "Litter successfully created", body = LitterCreateResponse),
+        (status = 401, description = "Invalid credentials"),
+        (status = 500, description = "Network error")
+    ),
+    tag = "Litter",
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[post("/v1/protected/litter")]
 pub async fn create_litter(
     data: web::Json<LitterData>,
@@ -97,10 +117,11 @@ pub async fn create_litter(
     Ok(web::Json(json!({ "id": id })))
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LitterGetData {
     lat: f64,
     lng: f64,
+    #[schema(format = "binary")]
     file: Vec<u8>,
     r#type: String,
     tags: Vec<String>,
@@ -122,6 +143,18 @@ impl Into<LitterGetData> for Litter {
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/protected/litter",
+    responses(
+        (status = 200, description = "List of litter items", body = Vec<LitterGetData>),
+        (status = 401, description = "Invalid credentials")
+    ),
+    tag = "Litter",
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 #[get("/v1/protected/litter")]
 pub async fn get_litter(
     db: web::Data<Database>,
