@@ -5,8 +5,8 @@ set -euo pipefail
 # Requirements: gh (GitHub CLI), docker (or podman — see note), logged-in gh (`gh auth login`)
 #
 # Usage examples:
-#   ./ghcr-push.sh                           # builds from ./Dockerfile and pushes :local
-#   TAG=v1.0.0 ./ghcr-push.sh                # push with a custom tag
+#   ./ghcr-push.sh                           # builds from ./Dockerfile and pushes :<git-sha> (fallback :local)
+#   TAG=v1.0.0 ./ghcr-push.sh                # push with a custom tag (overrides git sha)
 #   OWNER=my-org ./ghcr-push.sh              # push to an org instead of current repo owner
 #   REPO=my-repo ./ghcr-push.sh              # override repo name (default: current repo)
 #   CONTEXT=./app DOCKERFILE=./Dockerfile    \
@@ -17,7 +17,11 @@ set -euo pipefail
 
 # --- Config via env with sane defaults ---
 REGISTRY="${REGISTRY:-ghcr.io}"
-TAG="${TAG:-local}"
+
+# Default TAG: short git SHA if available; otherwise "local". Can be overridden via env TAG=...
+TAG="${TAG:-$(git rev-parse --short HEAD 2>/dev/null || true)}"
+if [[ -z "${TAG}" ]]; then TAG="local"; fi
+
 CONTEXT="${CONTEXT:-.}"
 DOCKERFILE="${DOCKERFILE:-Dockerfile}"
 BUILD_ARGS="${BUILD_ARGS:-}"                 # e.g. "--build-arg FOO=bar --build-arg BAZ=qux"
@@ -62,7 +66,6 @@ echo "Image: ${IMAGE}"
 
 # --- Build (supports buildx for multi-arch if PLATFORMS is set) ---
 if [[ -n "$PLATFORMS" ]]; then
-  # Ensure buildx is available; Docker Desktop usually has it by default.
   docker buildx version >/dev/null 2>&1 || { echo "Error: docker buildx not available."; exit 1; }
   echo "Building (multi-arch) with buildx for platforms: ${PLATFORMS}"
   docker buildx build \
@@ -72,7 +75,6 @@ if [[ -n "$PLATFORMS" ]]; then
     $BUILD_ARGS \
     --push \
     "$CONTEXT"
-  # When buildx --push is used, image is already pushed; skip push step below.
   PUSH=0
 else
   echo "Building image with docker build…"
@@ -89,8 +91,6 @@ echo "✅ Done. Pushed: ${IMAGE}"
 
 # --- Optionally emit DOCKER_AUTH_CONFIG JSON for Render.com ---
 if [[ "$EMIT_DOCKER_AUTH_CONFIG" -eq 1 ]]; then
-  # Render expects base64("username:token")
-  # Use a portable base64 (no line breaks)
   AUTH="$(printf '%s:%s' "$OWNER" "$TOKEN" | base64 | tr -d '\r\n')"
   cat <<JSON
 
