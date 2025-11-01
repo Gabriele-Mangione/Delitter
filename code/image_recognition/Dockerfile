@@ -15,6 +15,7 @@ ARG HTTPS_PROXY
 ARG https_proxy
 ARG NO_PROXY
 ARG no_proxy
+ARG GIT_HASH=development
 
 # Set the environment variables from the build args (if provided).
 ENV HTTP_PROXY=${HTTP_PROXY}
@@ -47,6 +48,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Copy the application code
 COPY . .
+
+# Write version file
+RUN echo "${GIT_HASH}" > version.txt
 
 # Expose the API port. The image exposes 8080 as the default service port.
 EXPOSE 8080

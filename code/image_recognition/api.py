@@ -41,9 +41,27 @@ async def root():
             "analyze": "/v1/analyze",
             "docs": "/docs",
             "health": "/health",
+            "version": "/version",
             "redoc": "/redoc",
         }
     }
+
+
+@app.get("/version")
+async def version():
+    """
+    Get the application version (git hash).
+
+    Returns:
+        dict: Version information with git hash or "development" for local builds
+    """
+    try:
+        with open("version.txt", "r") as f:
+            version_hash = f.read().strip()
+    except FileNotFoundError:
+        version_hash = "development"
+
+    return {"version": version_hash}
 
 
 @app.post("/v1/analyze", response_model=LitterDetection)
