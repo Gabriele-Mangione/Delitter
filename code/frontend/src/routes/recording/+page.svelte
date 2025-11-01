@@ -29,6 +29,7 @@
 			context?.drawImage(videoElement, 0, 0);
 			capturedImage = canvasElement.toDataURL('image/png');
 			stopCamera();
+			sendLitterRequest(canvasElement)
 		}
 	}
 
@@ -90,6 +91,8 @@
 				console.log('Image successfully sent.');
 				const result = await response.json(); // Or response.text()
 				console.log('Server response:', result);
+				capturedImage = null;
+				await startCamera();
 			} else {
 				console.error(`Upload failed: ${response.status} ${response.statusText}`);
 			}
@@ -116,9 +119,9 @@
 
     <div class="controls flex-row">
         {#if !isCameraActive && !capturedImage}
-            <button class="btn bg-green-800 flex justify-center" on:click={startCamera}>Allow Camera</button>
+            <button class="btn btn-secondary flex justify-center" on:click={startCamera}>Allow Camera</button>
         {:else if isCameraActive}
-            <button class="btn bg-green-800" on:click={takePicture}>
+            <button class="btn btn-secondary" on:click={takePicture}>
                 <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                      stroke="currentColor">
                     <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -131,8 +134,7 @@
         {/if}
 
         {#if capturedImage}
-            <button class="btn bg-green-800" on:click={sendLitterRequest(canvasElement)}>Upload</button>
-            <button class="btn bg-green-800" on:click={() => { capturedImage = null; startCamera(); }}>Retry</button>
+            <button class="btn btn-secondary" on:click={sendLitterRequest(canvasElement)}>Retry Upload</button>
         {/if}
     </div>
 
