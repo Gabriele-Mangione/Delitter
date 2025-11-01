@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use actix_web::{
     App, HttpServer,
     web::{self},
@@ -27,6 +28,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap(Cors::permissive())
             .app_data(web::Data::new(db.clone()))
             .service(handlers::auth::signin)
             .service(handlers::auth::signup)
