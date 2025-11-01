@@ -107,7 +107,7 @@ pub async fn signin(
         }
     };
 
-    let parsed_hash = match  PasswordHash::new(&user.password_hash) {
+    let parsed_hash = match PasswordHash::new(&user.password_hash) {
         Ok(o) => o,
         Err(e) => {
             error!("Password hashing failed: {}", e);

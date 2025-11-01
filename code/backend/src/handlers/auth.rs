@@ -36,9 +36,9 @@ pub async fn signup(
             })))
         }
         Err(err) => {
-            log::info!("Login failed with {:?}", err);
+            log::info!("Signup failed with {:?}", err);
 
-            Err(HttpError::InvalidCredentials)
+            Err(HttpError::UserAlreadyExists)
         }
     }
 }

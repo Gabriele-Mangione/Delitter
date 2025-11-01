@@ -11,6 +11,8 @@ pub enum HttpError {
     InvalidCredentials,
     #[display("Invalid Token")]
     InvalidToken,
+    #[display("The provided username already exists")]
+    UserAlreadyExists,
 }
 
 impl ResponseError for HttpError {
@@ -18,6 +20,7 @@ impl ResponseError for HttpError {
         match *self {
             Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
             Self::InvalidToken => StatusCode::FORBIDDEN,
+            Self::UserAlreadyExists => StatusCode::CONFLICT,
         }
     }
 
