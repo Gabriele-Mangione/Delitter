@@ -7,10 +7,62 @@ use mongodb::{
     Client,
 };
 use std::env;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 mod handlers;
 mod models;
 mod services;
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::alive,
+        handlers::version,
+        handlers::auth::signup,
+        handlers::auth::signin,
+        handlers::litter::create_litter,
+        handlers::litter::get_litter,
+    ),
+    components(
+        schemas(
+            handlers::auth::SignupData,
+            handlers::auth::LoginData,
+            handlers::auth::AuthResponse,
+            handlers::auth::Claims,
+            handlers::litter::LitterData,
+            handlers::litter::LitterGetData,
+            handlers::litter::LitterCreateResponse,
+            handlers::litter::Claims,
+            handlers::ErrorResponse,
+            handlers::VersionResponse,
+        )
+    ),
+    tags(
+        (name = "Health", description = "Health check endpoints"),
+        (name = "Authentication", description = "User authentication endpoints"),
+        (name = "Litter", description = "Litter management endpoints")
+    ),
+    modifiers(&SecurityAddon)
+)]
+struct ApiDoc;
+
+struct SecurityAddon;
+
+impl utoipa::Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "bearer_auth",
+                utoipa::openapi::security::SecurityScheme::Http(
+                    utoipa::openapi::security::Http::new(
+                        utoipa::openapi::security::HttpAuthScheme::Bearer,
+                    ),
+                ),
+            )
+        }
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -38,12 +90,21 @@ async fn main() -> std::io::Result<()> {
         .unwrap_or(8080);
 
     info!("🚀 App listening on 0.0.0.0:{port}");
+    info!("📚 Swagger UI available at http://0.0.0.0:{port}/docs/");
+
+    let openapi = ApiDoc::openapi();
 
     HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
             .app_data(web::Data::new(db.clone()))
+            .service(
+                SwaggerUi::new("/docs/{_:.*}")
+                    .url("/api-docs/openapi.json", openapi.clone())
+            )
+            .service(handlers::root_redirect)
             .service(handlers::alive)
+            .service(handlers::version)
             .service(handlers::auth::signin)
             .service(handlers::auth::signup)
             .service(handlers::litter::create_litter)

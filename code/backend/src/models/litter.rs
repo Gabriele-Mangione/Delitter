@@ -1,7 +1,7 @@
 use actix_web::web;
 use mongodb::{
     Collection, Database,
-    bson::{Binary, Bson, doc, oid::ObjectId},
+    bson::{Binary, doc, oid::ObjectId},
 };
 use serde::{Deserialize, Serialize};
 
