@@ -338,7 +338,6 @@ dependencies = [
  "mongodb",
  "password-hash",
  "rand_core 0.9.3",
- "rsa",
  "serde",
  "serde_json",
 ]
