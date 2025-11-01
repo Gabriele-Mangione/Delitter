@@ -52,10 +52,11 @@
             <h1 class="card-title">Upload Image</h1>
 
             <div class="form-control">
-                <label class="label">
+                <label class="label" for="file-input">
                     <span class="label-text">Choose an image</span>
                 </label>
                 <input
+                        id="file-input"
                         bind:this={fileInput}
                         type="file"
                         accept="image/*"
