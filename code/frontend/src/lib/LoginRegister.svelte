@@ -6,13 +6,15 @@
     let response = '';
     let loading = false;
     let isSignup = true;
+    // TODO: Make this configurable with a .env file
     const base = "http://localhost:7001";
 
     async function register() {
         response = '';
         loading = true;
         try {
-            const api_url = `${base}/v1/public/auth/signup`
+            const api_route = isSignup ? "signup" : "signin";
+            const api_url = `${base}/v1/public/auth/${api_route}`
             console.log({api_url})
             const res = await fetch(api_url, {
                 method: 'POST',
@@ -91,6 +93,10 @@
 
         <button on:click={toggleSignup} class="text-sm text-center link-primary cursor-pointer">
             {isSignup ? 'Already have an account? Log in' : "Don't have an account? Register"}
+        </button>
+
+        <button on:click={() => auth.setToken("todo")} class="text-sm text-center link-primary cursor-pointer">
+            Just log me in !!!
         </button>
     </div>
 </div>
