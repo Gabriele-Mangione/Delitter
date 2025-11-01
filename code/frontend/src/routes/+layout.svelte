@@ -20,7 +20,7 @@
 
 {#if loggedIn}
     <NavBar/>
-    <div class="m-2">
+    <div class="m-2 mb-[64px]">
         <slot/>
     </div>
     <Dock/>
