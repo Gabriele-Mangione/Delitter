@@ -129,7 +129,6 @@
 </div>
 
 <style>
-  /* remove the .toolbar { @apply ... } block entirely */
 
   :global(.leaflet-container) {
     width: 100%;
@@ -137,7 +136,7 @@
     font-family: system-ui, sans-serif;
   }
 
-  /* (optional) popup wrapper tweaks can stay as plain CSS */
+  /* popup */
   :global(.dl-popup .leaflet-popup-content) { margin: 0; padding: 0; }
   :global(.dl-popup .leaflet-popup-content-wrapper) {
     background: hsl(var(--b1));
