@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # Use Python 3.11 slim image for smaller size
 FROM python:3.11-slim
 
@@ -24,6 +25,7 @@ ENV NO_PROXY=${NO_PROXY}
 ENV no_proxy=${no_proxy}
 
 # Copy requirements first for better layer caching
+# Copy requirements first for better layer caching
 COPY requirements.txt .
 
 # If a proxy is provided, create a pip config so pip uses it during install.
@@ -38,14 +40,17 @@ RUN if [ -n "${HTTP_PROXY}${HTTPS_PROXY}${http_proxy}${https_proxy}" ]; then \
             elif [ -n "${http_proxy}" ]; then echo "proxy = ${http_proxy}" >> /etc/pip.conf; fi; \
         fi
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies using a BuildKit cache mount for pip's cache directory.
+# This speeds up subsequent builds by reusing downloaded wheels between runs.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
 COPY . .
 
 # Expose the API port
-EXPOSE 8000
+ENV APP_PORT=${PORT:-8080}
+EXPOSE ${APP_PORT}
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -55,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import os,sys,urllib.request,sys as _s; port=os.environ.get('PORT','8000'); url='http://127.0.0.1:%s/health'%port; req=urllib.request.Request(url); urllib.request.urlopen(req, timeout=5); _s.exit(0)" || exit 1
 
 # Run the API server: bind to $PORT (Render provides this env var). Fallback to 8000.
-CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${APP_PORT}"]

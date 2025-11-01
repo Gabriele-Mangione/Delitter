@@ -56,8 +56,16 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Use both GitHub Actions cache and a registry-backed cache image
+          # so runners can pull cached layers from ghcr.io when available.
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ github.ref_name }}
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+            type=gha
+          cache-to: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ github.ref_name }},mode=max
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+            type=gha,mode=max
 
       - name: Trigger Render deploy
         uses: johnbeynon/render-deploy-action@v0.0.8
