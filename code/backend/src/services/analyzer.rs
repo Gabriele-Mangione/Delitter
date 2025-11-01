@@ -7,7 +7,7 @@ use reqwest::multipart::{Form, Part};
 use serde::{Deserialize, Serialize};
 
 pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std::error::Error>> {
-    let bytes = std::fs::read(std::path::Path::new("C:/Users/Gabri/Downloads/IMG_1875.jpg"))?;
+    //let bytes = std::fs::read(std::path::Path::new("C:/Users/Gabri/Downloads/IMG_1875.jpg"))?;
     let part = Part::bytes(bytes) // replace with bytes
         .file_name("image.jpg")
         .mime_str("image/jpg")?;

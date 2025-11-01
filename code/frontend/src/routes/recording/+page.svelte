@@ -9,9 +9,9 @@
 	let canvasElement: HTMLCanvasElement;
 
 	const locationOptions = {
-		enableHighAccuracy: true,
-		timeout: 10000,
-		maximumAge: 10000,
+		enableHighAccuracy: true
+		// timeout: 10000,
+		// maximumAge: 10000,
 	};
 
 	function success(pos) {
@@ -92,7 +92,10 @@
 			"lng": lng,
 			"file": byteArray,
 			"type": mimeType,
-            "tags": []
+			"category": "",
+			"brand": "",
+			"weight": 100000,
+			"material": ""
 		}
 
 		try {
