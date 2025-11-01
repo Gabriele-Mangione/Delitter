@@ -1,4 +1,9 @@
-use actix_web::{HttpResponse, ResponseError, http::StatusCode, web::Json};
+use actix_web::{
+    HttpResponse, Responder, ResponseError, get,
+    http::StatusCode,
+    post,
+    web::{self, Json},
+};
 use serde_json::json;
 
 use derive_more::derive::{Display, Error};
@@ -29,4 +34,9 @@ impl ResponseError for HttpError {
             "message": self.to_string()
         })))
     }
+}
+
+#[get("/v1/alive")]
+pub async fn signup() -> impl Responder {
+    web::Html::new("OK".to_string())
 }
