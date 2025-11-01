@@ -17,10 +17,24 @@
 
 {#if loggedIn}
     <NavBar/>
-    <div class="m-2 mb-[64px]">
+    <div class="m-2 main-content-area">
         <slot/>
     </div>
+    <div class="spacer"></div>
     <Dock/>
 {:else}
     <LoginRegister/>
 {/if}
+
+<style>
+    .spacer {
+        height: 72px;
+        width: 100%;
+        background: transparent;
+    }
+
+    .main-content-area {
+        /*height: calc(100% - (64px * 2) - 8px);*/
+        /*max-height: calc(100% - (64px * 2) - 8px);*/
+    }
+</style>

@@ -13,6 +13,32 @@
         date: Date;
     };
 
+    function formatDate(date: Date): string {
+        const now = new Date();
+        const pad = (n: number) => n.toString().padStart(2, '0');
+
+        const isSameDay = (d1: Date, d2: Date) =>
+            d1.getFullYear() === d2.getFullYear() &&
+            d1.getMonth() === d2.getMonth() &&
+            d1.getDate() === d2.getDate();
+
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+
+        const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+        if (isSameDay(date, now)) {
+            return time;
+        } else if (isSameDay(date, yesterday)) {
+            return `Yesterday, ${time}`;
+        } else {
+            return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${String(
+                date.getFullYear()
+            ).slice(2)} ${time}`;
+        }
+    }
+
+
     onMount(async () => {
         try {
             const base = PUBLIC_BACKEND_URL;
@@ -63,26 +89,31 @@
 {:else if error}
     <p class="error">{error}</p>
 {:else}
-    <ul>
-
-    </ul>
-
+    {#if items.length == 0}
+        <div class="flex flex-col gap-2 items-center">
+            <img class="w-1/2" src="/src/lib/assets/history_empty.png" alt="Garbage">
+            <div class="text-center">
+                <span class="text-xl">You have not recorded any litter yet.</span>
+                <span class="text-sm">Go to the recording tab to take some pictures!</span>
+            </div>
+        </div>
+    {/if}
     <ul class="list bg-base-100 rounded-box shadow-md">
-        <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Most played songs this week</li>
         {#each items as item: HistoryEntry (item.finding.id)}
             <li class="list-row">
                 <div>
                     <img class="w-40 rounded-box" src="{item.image_url}"/>
                 </div>
                 <div class="flex flex-col gap-2">
-                    <div class="font-bold text-lg" >{item.finding.category}</div>
+                    <div class="font-bold text-lg">
+                        {item.finding.category}{#if item.finding.brand}&nbsp;({item.finding.brand}){/if}
+                    </div>
                     <div class="flex flex-col gap-1">
-                        <div class="text-xs uppercase font-semibold opacity-60">{item.finding.brand}</div>
                         <div class="text-xs font-semibold opacity-60">
                             <span class="uppercase">{item.finding.weight}</span><span class="">g</span>
                         </div>
                         <div class="text-xs uppercase font-semibold opacity-60">{item.finding.material}</div>
-                        <div class="text-xs uppercase font-semibold opacity-60">{item.date}</div>
+                        <div class="text-xs uppercase font-semibold opacity-60">{formatDate(item.date)}</div>
                     </div>
                 </div>
                 <button aria-label="delete" class="btn btn-square btn-ghost">
