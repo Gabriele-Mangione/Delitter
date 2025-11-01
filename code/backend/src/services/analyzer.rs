@@ -16,7 +16,7 @@ pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std:
 
     let client = Client::new();
 
-    let uri = env::var("ANALYZER_API").expect("ANALYZER_API not set");
+    let uri = env::var("IMAGE_RECOGNITION_URL").expect("IMAGE_RECOGNITION_URL not set");
 
     let response = client
         .post(format!("{uri}/v1/analyze"))
