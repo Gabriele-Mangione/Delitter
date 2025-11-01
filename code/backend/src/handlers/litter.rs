@@ -60,7 +60,10 @@ pub async fn create_litter(
     let litter: Litter = data.0.into();
     let id = litter._id.to_hex();
     user.litter.push(litter);
-    user.persist(&db).await;
+    if let Err(e) = user.persist(&db).await {
+        log::error!("Failed to persist user: {:?}", e);
+        return Err(HttpError::NetworkError);
+    }
     Ok(web::Json(json!({"id": id})))
 }
 

@@ -22,24 +22,24 @@ impl User {
     fn collection(db: &web::Data<Database>) -> Collection<Self> {
         db.collection::<User>("users")
     }
-    pub async fn persist(&self, db: &web::Data<Database>) -> Option<ObjectId> {
+    pub async fn persist(&self, db: &web::Data<Database>) -> Result<ObjectId, mongodb::error::Error> {
         let collection = Self::collection(db);
         match self._id {
             Some(id) => match collection
-                .update_one(doc! {"_id": id}, doc! {"$set": to_document(self).ok()?})
+                .update_one(doc! {"_id": id}, doc! {"$set": to_document(self).map_err(|e| mongodb::error::Error::custom(format!("Serialization failed: {}", e)))?})
                 .await
             {
-                Ok(res) => res.upserted_id?.as_object_id(),
+                Ok(_) => Ok(id),
                 Err(e) => {
-                    error!("failed to insert user {:?}", e);
-                    None
+                    error!("failed to update user {:?}", e);
+                    Err(e)
                 }
             },
             None => match collection.insert_one(self).await {
-                Ok(res) => res.inserted_id.as_object_id(),
+                Ok(res) => res.inserted_id.as_object_id().ok_or_else(|| mongodb::error::Error::custom("Inserted ID is not ObjectId")),
                 Err(e) => {
                     error!("failed to insert user {:?}", e);
-                    None
+                    Err(e)
                 }
             },
         }

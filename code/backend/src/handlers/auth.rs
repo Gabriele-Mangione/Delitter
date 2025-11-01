@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{handlers::HttpError, services};
+use crate::services::auth::SignupError;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -38,7 +39,11 @@ pub async fn signup(
         Err(err) => {
             log::info!("Signup failed with {:?}", err);
 
-            Err(HttpError::UserAlreadyExists)
+            match err {
+                SignupError::UserAlreadyExists => Err(HttpError::UserAlreadyExists),
+                SignupError::NetworkError => Err(HttpError::NetworkError),
+                SignupError::UnknownError => Err(HttpError::NetworkError), // or InternalServerError, but since NetworkError is 500
+            }
         }
     }
 }

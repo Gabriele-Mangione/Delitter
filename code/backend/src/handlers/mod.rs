@@ -17,6 +17,8 @@ pub enum HttpError {
     InvalidToken,
     #[display("The provided username already exists")]
     UserAlreadyExists,
+    #[display("Network error")]
+    NetworkError,
 }
 
 impl ResponseError for HttpError {
@@ -25,6 +27,7 @@ impl ResponseError for HttpError {
             Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
             Self::InvalidToken => StatusCode::FORBIDDEN,
             Self::UserAlreadyExists => StatusCode::CONFLICT,
+            Self::NetworkError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

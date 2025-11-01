@@ -21,7 +21,8 @@ use crate::{handlers::HttpError, models::user::User};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum SignupError {
-    WrongCredentials,
+    UserAlreadyExists,
+    NetworkError,
     UnknownError,
 }
 
@@ -65,12 +66,23 @@ pub async fn signup(
         ..Default::default()
     };
 
-    let result_id = new_user.persist(&db).await;
-
-    let id = result_id.ok_or(SignupError::UnknownError)?;
+    let result_id = match new_user.persist(&db).await {
+        Ok(id) => id,
+        Err(e) => {
+            let error_msg = e.to_string();
+            if error_msg.contains("E11000") {
+                return Err(SignupError::UserAlreadyExists);
+            }
+            if error_msg.contains("Server selection") {
+                return Err(SignupError::NetworkError);
+            }
+            error!("Unknown error when persisting user: {:?}", e);
+            return Err(SignupError::UnknownError);
+        }
+    };
 
     let jwt = Jwt::new(Extras {
-        id: id.to_hex(),
+        id: result_id.to_hex(),
         username: new_user.username,
     });
 
@@ -80,7 +92,7 @@ pub async fn signup(
 
     let jwt = jwt.map_err(|_| SignupError::UnknownError)?;
 
-    Ok((id, jwt))
+    Ok((result_id, jwt))
 }
 
 pub async fn signin(
