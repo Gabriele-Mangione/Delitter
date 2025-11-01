@@ -49,10 +49,10 @@
 
 <div>
     <div class="flex flex-col gap-6 min-h-screen items-center justify-center bg-base-200">
-        <form class="card w-96 bg-base-100 shadow-xl p-6 space-y-4" on:submit|preventDefault={register}>
+        <form class="card login-card bg-base-100 shadow-xl p-6 space-y-4" on:submit|preventDefault={register}>
             <h2 class="text-2xl font-bold text-center">{isSignup ? 'Register' : "Login"}</h2>
 
-            <label class="form-control">
+            <label class="form-control mt-1">
                 <div class="label"><span class="label-text">Username</span></div>
                 <input
                         type="text"
@@ -74,7 +74,7 @@
                 />
             </label>
 
-            <button class="btn btn-primary w-full" type="submit" disabled={loading}>
+            <button class="btn btn-primary w-full mt-1" type="submit" disabled={loading}>
                 {isSignup ? 'Register' : "Login"}
             </button>
 
@@ -94,3 +94,10 @@
         </button>
     </div>
 </div>
+
+<style>
+    .login-card {
+        width: 100%;
+        max-width: min(90%, 350px);
+    }
+</style>
