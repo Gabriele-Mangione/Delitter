@@ -56,7 +56,7 @@
             ;
             const findings = await res.json(); // array of objects
 
-            items = findings.map((item : Finding) => {
+            items = findings.map((item: Finding) => {
                 // TODO: Remove
                 item.brand = "Coca Cola"
                 item.category = "Can"
@@ -64,7 +64,7 @@
                 item.weight = 10  // g
 
                 const bytes = new Uint8Array(item.file)
-                const blob = new Blob([bytes], { type: 'image/jpeg' })
+                const blob = new Blob([bytes], {type: 'image/jpeg'})
                 const url = URL.createObjectURL(blob)
 
                 // Fix date
@@ -76,6 +76,7 @@
                     date: new Date(fixed)
                 }
             })
+                .sort((a: HistoryEntry, b: HistoryEntry) => b.date.getTime() - a.date.getTime());
         } catch (e) {
             error = e.message;
         } finally {
@@ -106,7 +107,8 @@
                 </div>
                 <div class="flex flex-col gap-2">
                     <div class="font-bold text-lg">
-                        {item.finding.category}{#if item.finding.brand}&nbsp;({item.finding.brand}){/if}
+                        {item.finding.category}
+                        {#if item.finding.brand}&nbsp;({item.finding.brand}){/if}
                     </div>
                     <div class="flex flex-col gap-1">
                         <div class="text-xs font-semibold opacity-60">
