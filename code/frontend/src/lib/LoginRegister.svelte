@@ -15,7 +15,6 @@
         try {
             const api_route = isSignup ? "signup" : "signin";
             const api_url = `${base}/public/auth/${api_route}`
-            console.log({api_url})
             const res = await fetch(api_url, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -23,7 +22,6 @@
             });
 
             const data = await res.json().catch(() => ({}));
-            console.log(data)
 
             if (!res.ok) {
                 response = data?.message ?? `Error ${res.status}`;

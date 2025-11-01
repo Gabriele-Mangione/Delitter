@@ -17,7 +17,6 @@
         try {
             const base = PUBLIC_BACKEND_URL;
             const api_url = `${base}/protected/litter`
-            console.log(api_url)
             const res = await fetch(api_url, {
                 method: 'GET',
                 headers: {
@@ -51,9 +50,6 @@
                     date: new Date(fixed)
                 }
             })
-
-            console.log(items)
-
         } catch (e) {
             error = e.message;
         } finally {
