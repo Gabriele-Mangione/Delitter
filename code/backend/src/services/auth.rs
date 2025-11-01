@@ -50,10 +50,14 @@ pub async fn signup(
 ) -> Result<(ObjectId, Jwt), SignupError> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
-    let password_hash = argon2
-        .hash_password(password.as_bytes(), &salt)
-        .unwrap()
-        .to_string();
+
+    let password_hash = match argon2.hash_password(password.as_bytes(), &salt) {
+        Ok(o) => o.to_string(),
+        Err(e) => {
+            error!("Password hashing failed: {}", e);
+            return Err(SignupError::UnknownError);
+        }
+    };
 
     let new_user = User {
         username: user.to_string(),
@@ -103,7 +107,14 @@ pub async fn signin(
         }
     };
 
-    let parsed_hash = PasswordHash::new(&user.password_hash).unwrap();
+    let parsed_hash = match  PasswordHash::new(&user.password_hash) {
+        Ok(o) => o,
+        Err(e) => {
+            error!("Password hashing failed: {}", e);
+            return None;
+        }
+    };
+
     let argon2 = Argon2::default();
     if argon2
         .verify_password(password.as_bytes(), &parsed_hash)
