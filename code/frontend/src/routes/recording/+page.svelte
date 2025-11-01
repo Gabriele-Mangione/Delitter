@@ -1,33 +1,16 @@
 <script lang="ts">
 	import {onMount} from "svelte";
 	import {PUBLIC_BACKEND_URL} from "$env/static/public";
+	import {browser} from "$app/environment";
 
 	let isCameraActive = false;
 	let capturedImage: string | null = null;
 	let stream: MediaStream | null = null;
 	let videoElement: HTMLVideoElement;
 	let canvasElement: HTMLCanvasElement;
-
-	const locationOptions = {
-		enableHighAccuracy: true
-		// timeout: 10000,
-		// maximumAge: 10000,
-	};
-
-	function success(pos) {
-		const crd = pos.coords;
-
-		console.log("Your current position is:");
-		console.log(`Latitude : ${crd.latitude}`);
-		console.log(`Longitude: ${crd.longitude}`);
-		console.log(`More or less ${crd.accuracy} meters.`);
-
-		sendLitterRequest(canvasElement, crd.latitude, crd.longitude)
-	}
-
-	function error(err) {
-		console.warn(`ERROR(${err.code}): ${err.message}`);
-	}
+	let geoWatchId: number | null = null;
+	let latitude: number | null = null;
+	let longitude: number | null = null;
 
 	async function startCamera() {
 		try {
@@ -50,7 +33,12 @@
 			context?.drawImage(videoElement, 0, 0);
 			capturedImage = canvasElement.toDataURL('image/png');
 			stopCamera();
-			navigator.geolocation.getCurrentPosition(success, error, locationOptions);
+
+			if (longitude && latitude) {
+				sendLitterRequest(canvasElement, latitude, longitude);
+            } else {
+				// TODO
+            }
 		}
 	}
 
@@ -118,7 +106,28 @@
 		}
 	}
 
-	onMount(() => startCamera())
+	function startLocateWatch() {
+		if (!browser || !navigator.geolocation) return;
+		if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
+
+		geoWatchId = navigator.geolocation.watchPosition(
+			(pos) => {
+                const coords = pos.coords;
+                latitude = coords.latitude;
+                longitude = coords.longitude;
+                console.log(`Updated position: (${latitude}, ${longitude})`);
+            },
+			(err) => {
+				console.warn(`ERROR(${err.code}): ${err.message}`);
+            },
+			{ enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+		);
+	}
+
+	onMount(() => {
+		startCamera()
+        startLocateWatch()
+	})
 </script>
 
 <div class="h-center flex flex-col justify-center items-center">
@@ -151,7 +160,8 @@
         {/if}
 
         {#if capturedImage}
-            <button class="btn btn-secondary" on:click={() => navigator.geolocation.getCurrentPosition(success, error, locationOptions)}>Retry Upload</button>
+            <!-- TODO -->
+            <!--<button class="btn btn-secondary" on:click={}>Retry Upload</button>-->
         {/if}
     </div>
 
