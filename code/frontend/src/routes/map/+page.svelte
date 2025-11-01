@@ -3,6 +3,7 @@
   import { browser } from '$app/environment';
   import 'leaflet/dist/leaflet.css';
 
+  import MapContainer from '$lib/MapContainer.svelte';
   import { PUBLIC_BACKEND_URL } from '$env/static/public';
   import { auth } from '$lib/stores/auth';
   import { get } from 'svelte/store';
@@ -23,16 +24,19 @@
     { id: '3', lat: 47.5584, lng: 7.5920, weight: 20, category: 'Plastic Bottle', material: 'Plastic', brand: 'Fanta' }
   ];
 
-  // leaflet refs
+  // Leaflet refs
   let mapDiv: HTMLDivElement;
+  let mapWrap: HTMLDivElement;       // from MapContainer (el)
+  let ro: ResizeObserver | null = null;
+
   let map: any;
   let markersLayer: any;
   let L: any;
   let delitterIcon: any;
 
   // basemap layers
-  let baseLight: any;   // voyager
-  let baseDark: any;    // dark_all
+  let baseLight: any;
+  let baseDark: any;
   let currentBase: any;
   let themeObs: MutationObserver | null = null;
   let mql: MediaQueryList | null = null;
@@ -43,9 +47,8 @@
   let geoWatchId: number | null = null;
 
   // helpers
-  function escapeHtml(s: string) {
-    return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-  }
+  const escapeHtml = (s: string) =>
+    s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!));
 
   function popupHtml(f: Finding) {
     const brand = f.brand ? `<span class="badge badge-outline">${escapeHtml(f.brand)}</span>` : '';
@@ -69,83 +72,60 @@
     if (!L || !markersLayer) return;
     markersLayer.clearLayers();
 
-    findings.forEach((f) => {
-      const m = L.marker([f.lat, f.lng], {
-        title: f.category,
-        icon: delitterIcon
-      });
-
-      m.bindPopup(popupHtml(f), {
-        className: 'dl-popup',
-        maxWidth: 320,
-        offset: [0, -6]
-      });
-
+    for (const f of findings) {
+      const m = L.marker([f.lat, f.lng], { title: f.category, icon: delitterIcon });
+      m.bindPopup(popupHtml(f), { className: 'dl-popup', maxWidth: 320, offset: [0, -6] });
       m.addTo(markersLayer);
-    });
+    }
 
-    if (findings.length > 0) {
+    if (findings.length) {
       const bounds = L.latLngBounds(findings.map((f) => [f.lat, f.lng]));
       map.fitBounds(bounds.pad(0.2), { animate: false });
     }
   }
 
-  // load findings from backend
   async function loadFindings() {
     const BASE = (PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
     const token = (auth.getToken?.() ?? get(auth)) as string | null;
 
-    const url = `${BASE}/protected/litter`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
+    const res = await fetch(`${BASE}/protected/litter`, {
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
     });
-
-    if (!res.ok) throw new Error(`GET ${url} -> ${res.status}`);
+    if (!res.ok) throw new Error(`GET /protected/litter -> ${res.status}`);
 
     const apiData: Array<{
-      id?: string;
-      lat: number;
-      lng: number;
-      weight?: number | null;
-      category: string;
-      material: string;
-      brand?: string | null;
+      id?: string; lat: number; lng: number; weight?: number | null;
+      category: string; material: string; brand?: string | null;
     }> = await res.json();
 
-    const items: Finding[] = apiData.map((d) => ({
-      id: d.id ?? `${d.lat},${d.lng}`,
-      lat: d.lat,
-      lng: d.lng,
-      weight: d.weight ?? null,
-      category: d.category,
-      material: d.material,
-      brand: d.brand ?? null
-    }));
-    renderMarkers(items);
+    renderMarkers(
+      apiData.map((d) => ({
+        id: d.id ?? `${d.lat},${d.lng}`,
+        lat: d.lat, lng: d.lng,
+        weight: d.weight ?? null,
+        category: d.category, material: d.material,
+        brand: d.brand ?? null
+      }))
+    );
   }
 
-  // theme ↔ tile switching
-  function isDarkTheme(): boolean {
+  const isDarkTheme = () => {
     const attr = document.documentElement.getAttribute('data-theme');
     if (attr) return /dark/i.test(attr);
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-  }
+  };
 
   function applyBaseLayer() {
     if (!map || !baseLight || !baseDark) return;
-    const wantDark = isDarkTheme();
-    const next = wantDark ? baseDark : baseLight;
+    const next = isDarkTheme() ? baseDark : baseLight;
     if (currentBase === next) return;
     if (currentBase && map.hasLayer(currentBase)) map.removeLayer(currentBase);
     next.addTo(map);
     currentBase = next;
+    // make sure tiles redraw after layer switch / size changes
+    setTimeout(() => map?.invalidateSize(), 0);
   }
 
-  // geolocation watch: pulsing dot & accuracy circle
   function startLocateWatch(centerOnce = true) {
     if (!browser || !map || !navigator.geolocation) return;
     if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
@@ -153,8 +133,7 @@
     const userIcon = L.divIcon({
       className: 'dl-user',
       html: '<span class="pulse"></span><span class="dot"></span>',
-      iconSize: [16, 16],
-      iconAnchor: [8, 8]
+      iconSize: [16, 16], iconAnchor: [8, 8]
     });
 
     geoWatchId = navigator.geolocation.watchPosition(
@@ -167,36 +146,24 @@
 
         if (!userAccuracy) {
           userAccuracy = L.circle(ll, {
-            radius: accuracy,
-            color: '#3b82f6',
-            weight: 1,
-            fillColor: '#3b82f6',
-            fillOpacity: 0.1
+            radius: accuracy, color: '#3b82f6', weight: 1, fillColor: '#3b82f6', fillOpacity: 0.1
           }).addTo(map);
         } else {
           userAccuracy.setLatLng(ll);
           userAccuracy.setRadius(accuracy);
         }
 
-        if (centerOnce) {
-          map.setView(ll, 15);
-          centerOnce = false;
-        }
+        if (centerOnce) { map.setView(ll, 15); centerOnce = false; }
       },
       () => {},
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
     );
   }
-
   function stopLocateWatch() {
-    if (geoWatchId) {
-      navigator.geolocation.clearWatch(geoWatchId);
-      geoWatchId = null;
-    }
+    if (geoWatchId) { navigator.geolocation.clearWatch(geoWatchId); geoWatchId = null; }
     if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
     if (userAccuracy) { map.removeLayer(userAccuracy); userAccuracy = null; }
   }
-
   function locateMe() { startLocateWatch(true); }
 
   onMount(async () => {
@@ -211,15 +178,8 @@
       popupAnchor: [0, -36]
     });
 
-    map = L.map(mapDiv, {
-      center: [47.5596, 7.5886],
-      zoom: 13,
-      minZoom: 3,
-      maxZoom: 19,
-      zoomControl: true
-    });
+    map = L.map(mapDiv, { center: [47.5596, 7.5886], zoom: 13, minZoom: 3, maxZoom: 19, zoomControl: true });
 
-    // tile layers light/dark
     baseLight = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>' }
@@ -229,9 +189,12 @@
       { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>' }
     );
 
-    applyBaseLayer(); // add the correct one now
+    applyBaseLayer();
 
-    // watch for theme changes
+    // keep Leaflet sized to the container
+    ro = new ResizeObserver(() => map?.invalidateSize());
+    ro.observe(mapWrap);
+
     themeObs = new MutationObserver(applyBaseLayer);
     themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     mql = window.matchMedia('(prefers-color-scheme: dark)');
@@ -239,66 +202,39 @@
 
     markersLayer = L.layerGroup().addTo(map);
 
-    try {
-      await loadFindings();
-    } catch (e) {
-      console.warn('Backend fetch failed, showing demo markers.', e);
-      renderMarkers(demoFindings);
-    }
+    try { await loadFindings(); }
+    catch (e) { console.warn('Backend fetch failed, showing demo markers.', e); renderMarkers(demoFindings); }
   });
 
   onDestroy(() => {
     if (map) map.remove();
     stopLocateWatch();
+    ro?.disconnect();
     themeObs?.disconnect();
     mql?.removeEventListener?.('change', applyBaseLayer);
   });
 </script>
 
-<div class="page h-screen flex flex-col bg-base-100">
-  <!-- Set your Dock height (and optional top navbar height) here -->
-  <div
-    class="map-wrap relative"
-    style="
-      --dock-h: 72px;
-      --nav-h: 0px;
-      height: calc(
-        100vh
-        - var(--dock-h, 72px)
-        - var(--nav-h, 0px)
-        - env(safe-area-inset-top, 0px)
-        - env(safe-area-inset-bottom, 0px)
-      );
-    "
-  >
-    <div class="map absolute inset-0" bind:this={mapDiv} aria-label="Delitter map"></div>
+<!-- No h-screen anywhere; the container owns the height -->
+<MapContainer bind:el={mapWrap} top={56} bottom={72} className="bg-base-100">
+  <div class="absolute inset-0" bind:this={mapDiv} aria-label="Delitter map"></div>
 
-    <!-- Floating “Locate me” button (no extra offset needed now) -->
-    <div class="absolute right-3 bottom-3 z-[1001]">
-      <button
-        class="btn btn-circle btn-accent shadow-md"
-        on:click={locateMe}
-        aria-label="Locate me"
-        title="Locate me"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 3v3m0 12v3M3 12h3m12 0h3M12 7a5 5 0 100 10 5 5 0 000-10z"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
+  <!-- Floating “Locate me” button -->
+  <div class="absolute right-3 bottom-3 z-[1001]">
+    <button class="btn btn-circle btn-accent shadow-md" on:click={locateMe} aria-label="Locate me" title="Locate me">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3v3m0 12v3M3 12h3m12 0h3M12 7a5 5 0 100 10 5 5 0 000-10z"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
   </div>
-</div>
+</MapContainer>
 
 <style>
-  :global(.leaflet-container) {
-    width: 100%;
-    height: 100%;
-    font-family: system-ui, sans-serif;
-  }
+  :global(.leaflet-container){ width:100%; height:100%; font-family:system-ui,sans-serif; }
 
   /* popup */
-  :global(.dl-popup .leaflet-popup-content){margin:0;padding:0;}
+  :global(.dl-popup .leaflet-popup-content){ margin:0; padding:0; }
   :global(.dl-popup .leaflet-popup-content-wrapper){
     background: var(--color-base-100);
     color: var(--color-base-content);
@@ -312,12 +248,11 @@
     box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 6%, transparent);
   }
 
-  /* location pulsing dot */
-  :global(.dl-user){position:relative;}
+  /* user location marker */
+  :global(.dl-user){ position:relative; }
   :global(.dl-user .dot){
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:10px;height:10px;border-radius:9999px;
-    background: var(--color-accent);
+    width:10px;height:10px;border-radius:9999px;background:var(--color-accent);
     border:2px solid var(--color-base-100);
     box-shadow:0 1px 4px color-mix(in oklch, var(--color-base-content) 25%, transparent);
   }
