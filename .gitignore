@@ -1,6 +1,5 @@
 /code/backend/target/
 /code/backend/target
 
-open_ai.key
 data/*
 .DS_Store
