@@ -1,0 +1,10 @@
+### Register / login
+POST localhost:7001/v1/public/auth/signup
+Content-Type: application/json
+
+{
+    "username": "rafael",
+    "password": "abcdef"
+}
+
+> {% client.global.set("jwt", response.body.jwt) %}

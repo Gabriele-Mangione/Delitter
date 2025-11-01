@@ -1,0 +1,8 @@
+### Register / login
+POST localhost:7001/v1/public/auth/signin
+Content-Type: application/json
+
+{
+  "username": "rafael",
+  "password": "abcdef"
+}
