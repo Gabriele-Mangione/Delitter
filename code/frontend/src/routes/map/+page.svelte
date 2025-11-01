@@ -33,7 +33,7 @@
   // basemap layers
   let baseLight: any;   // voyager
   let baseDark: any;    // dark_all
-  let currentBase: any; // which one is on the map now
+  let currentBase: any;
   let themeObs: MutationObserver | null = null;
   let mql: MediaQueryList | null = null;
 
@@ -42,7 +42,7 @@
   let userAccuracy: any = null;
   let geoWatchId: number | null = null;
 
-  // helpers 
+  // helpers
   function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
   }
@@ -52,7 +52,7 @@
     const material = `<span class="badge badge-success badge-outline">${escapeHtml(f.material)}</span>`;
     const weight = f.weight != null ? `<span class="text-xs text-base-content/60">${f.weight} g</span>` : '';
     return `
-      <div class="card bg-base-100 text-base-content">     <!-- ensure readable text -->
+      <div class="card bg-base-100 text-base-content">
         <div class="card-body p-4">
           <h3 class="card-title text-base">${escapeHtml(f.category)}</h3>
           <div class="flex flex-wrap items-center gap-2">
@@ -128,10 +128,10 @@
     renderMarkers(items);
   }
 
-  // adapt theme and title according to local preference for dark or light mode
+  // theme ↔ tile switching
   function isDarkTheme(): boolean {
     const attr = document.documentElement.getAttribute('data-theme');
-    if (attr) return /dark/i.test(attr);            // e.g., "delitter-dark"
+    if (attr) return /dark/i.test(attr);
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
   }
 
@@ -219,7 +219,7 @@
       zoomControl: true
     });
 
-    // tile layers ligth and dark mode
+    // tile layers light/dark
     baseLight = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>' }
@@ -229,8 +229,7 @@
       { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>' }
     );
 
-    // add correct one based on theme now
-    applyBaseLayer();
+    applyBaseLayer(); // add the correct one now
 
     // watch for theme changes
     themeObs = new MutationObserver(applyBaseLayer);
@@ -257,10 +256,24 @@
 </script>
 
 <div class="page h-screen flex flex-col bg-base-100">
-  <div class="map-wrap relative grow min-h-[60vh]">
+  <!-- Set your Dock height (and optional top navbar height) here -->
+  <div
+    class="map-wrap relative"
+    style="
+      --dock-h: 72px;
+      --nav-h: 0px;
+      height: calc(
+        100vh
+        - var(--dock-h, 72px)
+        - var(--nav-h, 0px)
+        - env(safe-area-inset-top, 0px)
+        - env(safe-area-inset-bottom, 0px)
+      );
+    "
+  >
     <div class="map absolute inset-0" bind:this={mapDiv} aria-label="Delitter map"></div>
 
-    <!-- Floating “Locate me” button -->
+    <!-- Floating “Locate me” button (no extra offset needed now) -->
     <div class="absolute right-3 bottom-3 z-[1001]">
       <button
         class="btn btn-circle btn-accent shadow-md"
@@ -288,7 +301,7 @@
   :global(.dl-popup .leaflet-popup-content){margin:0;padding:0;}
   :global(.dl-popup .leaflet-popup-content-wrapper){
     background: var(--color-base-100);
-    color: var(--color-base-content);                 /* NEW: fix dark-mode text */
+    color: var(--color-base-content);
     border-radius: .75rem;
     border: 1px solid color-mix(in oklch, var(--color-base-200) 60%, transparent);
     box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 8%, transparent);
@@ -299,7 +312,7 @@
     box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 6%, transparent);
   }
 
-  /* location pulsing dot / marker */
+  /* location pulsing dot */
   :global(.dl-user){position:relative;}
   :global(.dl-user .dot){
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
