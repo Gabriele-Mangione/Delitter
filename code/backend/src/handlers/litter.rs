@@ -83,6 +83,7 @@ pub async fn create_litter(
     usersession: UserSession,
 ) -> Result<impl Responder, HttpError> {
     let file = data.file.clone();
+    //let file :Vec<u8> = fs::read("C:/Users/Gabri/Downloads/IMG_1875.jpg").unwrap();
 
     let mut user = match models::user::User::from_id(&db, usersession.id).await {
         Some(u) => u,

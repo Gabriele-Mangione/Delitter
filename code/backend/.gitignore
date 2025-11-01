@@ -1,4 +1,5 @@
 .env
 yes
 
-target/
+target
+!target/release/myapp

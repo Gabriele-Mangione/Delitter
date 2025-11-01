@@ -7,25 +7,42 @@
   import { auth } from '$lib/stores/auth';
   import { get } from 'svelte/store';
 
+  type Finding = {
+    id: string;
+    lat: number;
+    lng: number;
+    weight: number | null;
+    category: string;
+    material: string;
+    brand?: string | null;
+  };
+
   const demoFindings: Finding[] = [
     { id: '1', lat: 47.5596, lng: 7.5886, weight: 40, category: 'Beverage Can', material: 'Aluminium', brand: 'Smirnoff' },
     { id: '2', lat: 47.5591, lng: 7.5859, weight: 20, category: 'Snack Wrapper', material: 'Plastic' },
     { id: '3', lat: 47.5584, lng: 7.5920, weight: 20, category: 'Plastic Bottle', material: 'Plastic', brand: 'Fanta' }
   ];
 
-  // --- leaflet refs ---
+  // leaflet refs
   let mapDiv: HTMLDivElement;
   let map: any;
   let markersLayer: any;
   let L: any;
   let delitterIcon: any;
 
+  // basemap layers
+  let baseLight: any;   // voyager
+  let baseDark: any;    // dark_all
+  let currentBase: any; // which one is on the map now
+  let themeObs: MutationObserver | null = null;
+  let mql: MediaQueryList | null = null;
+
   // user location layers
   let userMarker: any = null;
   let userAccuracy: any = null;
   let geoWatchId: number | null = null;
 
-  // --- helpers ---
+  // helpers 
   function escapeHtml(s: string) {
     return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
   }
@@ -35,7 +52,7 @@
     const material = `<span class="badge badge-success badge-outline">${escapeHtml(f.material)}</span>`;
     const weight = f.weight != null ? `<span class="text-xs text-base-content/60">${f.weight} g</span>` : '';
     return `
-      <div class="card bg-base-100">
+      <div class="card bg-base-100 text-base-content">     <!-- ensure readable text -->
         <div class="card-body p-4">
           <h3 class="card-title text-base">${escapeHtml(f.category)}</h3>
           <div class="flex flex-wrap items-center gap-2">
@@ -78,12 +95,12 @@
     const BASE = (PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
     const token = (auth.getToken?.() ?? get(auth)) as string | null;
 
-    const url = `${BASE}/protected/litter`; // NOTE: /v1 is already in BASE
+    const url = `${BASE}/protected/litter`;
     const res = await fetch(url, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('jwt')}`
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     });
 
@@ -108,11 +125,27 @@
       material: d.material,
       brand: d.brand ?? null
     }));
-    console.log('Loaded findings from backend:', items);
     renderMarkers(items);
   }
 
-  // geolocation watch: pulsing dot + accuracy circle
+  // adapt theme and title according to local preference for dark or light mode
+  function isDarkTheme(): boolean {
+    const attr = document.documentElement.getAttribute('data-theme');
+    if (attr) return /dark/i.test(attr);            // e.g., "delitter-dark"
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+  }
+
+  function applyBaseLayer() {
+    if (!map || !baseLight || !baseDark) return;
+    const wantDark = isDarkTheme();
+    const next = wantDark ? baseDark : baseLight;
+    if (currentBase === next) return;
+    if (currentBase && map.hasLayer(currentBase)) map.removeLayer(currentBase);
+    next.addTo(map);
+    currentBase = next;
+  }
+
+  // geolocation watch: pulsing dot & accuracy circle
   function startLocateWatch(centerOnce = true) {
     if (!browser || !map || !navigator.geolocation) return;
     if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
@@ -164,7 +197,6 @@
     if (userAccuracy) { map.removeLayer(userAccuracy); userAccuracy = null; }
   }
 
-  // one-click helper
   function locateMe() { startLocateWatch(true); }
 
   onMount(async () => {
@@ -172,7 +204,6 @@
     const mod = await import('leaflet');
     L = mod.default;
 
-    // custom SVG pin (ensure it exists in /static/icons/)
     delitterIcon = L.icon({
       iconUrl: '/icons/litter-pin.svg',
       iconSize: [28, 40],
@@ -188,54 +219,76 @@
       zoomControl: true
     });
 
-    const cartoVoyager = L.tileLayer(
+    // tile layers ligth and dark mode
+    baseLight = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      {
-        maxZoom: 20,
-        attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>'
-      }
+      { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>' }
     );
-    cartoVoyager.addTo(map);
+    baseDark = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
+      { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors | &copy; <a href="https://carto.com/attributions">CARTO</a>' }
+    );
+
+    // add correct one based on theme now
+    applyBaseLayer();
+
+    // watch for theme changes
+    themeObs = new MutationObserver(applyBaseLayer);
+    themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    mql = window.matchMedia('(prefers-color-scheme: dark)');
+    mql.addEventListener?.('change', applyBaseLayer);
 
     markersLayer = L.layerGroup().addTo(map);
 
     try {
-      await loadFindings();         // ← now loads from backend
+      await loadFindings();
     } catch (e) {
       console.warn('Backend fetch failed, showing demo markers.', e);
-      renderMarkers(demoFindings);  // fallback
+      renderMarkers(demoFindings);
     }
-
-    locateMe(); // optional geolocate
   });
 
   onDestroy(() => {
     if (map) map.remove();
     stopLocateWatch();
+    themeObs?.disconnect();
+    mql?.removeEventListener?.('change', applyBaseLayer);
   });
 </script>
 
 <div class="page h-screen flex flex-col bg-base-100">
-  <div class="toolbar flex items-center gap-2 p-2 border-b border-base-200">
-    <button class="btn btn-sm btn-accent" on:click={locateMe}>My location</button>
-    <button class="btn btn-sm" on:click={stopLocateWatch}>Stop</button>
-  </div>
+  <div class="map-wrap relative grow min-h-[60vh]">
+    <div class="map absolute inset-0" bind:this={mapDiv} aria-label="Delitter map"></div>
 
-  <div class="map grow min-h-[60vh]" bind:this={mapDiv} aria-label="Delitter map"></div>
+    <!-- Floating “Locate me” button -->
+    <div class="absolute right-3 bottom-3 z-[1001]">
+      <button
+        class="btn btn-circle btn-accent shadow-md"
+        on:click={locateMe}
+        aria-label="Locate me"
+        title="Locate me"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3v3m0 12v3M3 12h3m12 0h3M12 7a5 5 0 100 10 5 5 0 000-10z"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
 </div>
 
 <style>
-  /* Leaflet container sizing */
   :global(.leaflet-container) {
     width: 100%;
     height: 100%;
     font-family: system-ui, sans-serif;
   }
 
-  /* Popup wrapper → let the daisyUI card define size */
+  /* popup */
   :global(.dl-popup .leaflet-popup-content){margin:0;padding:0;}
   :global(.dl-popup .leaflet-popup-content-wrapper){
     background: var(--color-base-100);
+    color: var(--color-base-content);                 /* NEW: fix dark-mode text */
     border-radius: .75rem;
     border: 1px solid color-mix(in oklch, var(--color-base-200) 60%, transparent);
     box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 8%, transparent);
@@ -245,8 +298,8 @@
     background: var(--color-base-100);
     box-shadow: 0 8px 24px color-mix(in oklch, var(--color-base-content) 6%, transparent);
   }
-  
-  /* “My location” pulsing dot */
+
+  /* location pulsing dot / marker */
   :global(.dl-user){position:relative;}
   :global(.dl-user .dot){
     position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
