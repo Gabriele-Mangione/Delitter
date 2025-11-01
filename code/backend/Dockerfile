@@ -17,13 +17,19 @@ COPY . .
 # the provided proxy environment variables. If a corporate CA is provided (base64) it
 # will be installed so TLS against intercepted connections validates correctly.
 RUN set -eux; \
-	apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl build-essential pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*; \
+	apt-get update && apt-get install -y --no-install-recommends ca-certificates git curl build-essential pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
 	if [ -n "${CORP_CA_B64}" ]; then \
 		echo "Installing corporate CA cert from build-arg"; \
+		mkdir -p /usr/local/share/ca-certificates; \
 		echo "${CORP_CA_B64}" | base64 -d > /usr/local/share/ca-certificates/corp.crt; \
 		update-ca-certificates; \
-	fi; \
-	# Configure git and cargo to use HTTPS_PROXY if provided.
+	else \
+		echo "No corporate CA provided, skipping CA install"; \
+	fi
+
+RUN set -eux; \
 	if [ -n "${HTTPS_PROXY}" ]; then \
 		echo "Configuring git and cargo to use proxy: ${HTTPS_PROXY}"; \
 		git config --global http.proxy "${HTTPS_PROXY}" || true; \
@@ -33,7 +39,9 @@ RUN set -eux; \
 		echo "proxy = \"${HTTPS_PROXY}\"" >> /root/.cargo/config.toml; \
 	else \
 		echo "No HTTPS_PROXY provided, skipping git/cargo proxy config"; \
-	fi; \
+	fi
+
+RUN set -eux; \
 	cargo build --release
 
 FROM debian:bullseye-slim
