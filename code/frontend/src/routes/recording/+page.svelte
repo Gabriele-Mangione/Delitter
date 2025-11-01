@@ -1,131 +1,163 @@
 <script lang="ts">
-    import {onMount} from "svelte";
-    import {PUBLIC_BACKEND_URL} from "$env/static/public";
+	import {onDestroy, onMount} from "svelte";
+	import {PUBLIC_BACKEND_URL} from "$env/static/public";
+	import {browser} from "$app/environment";
 
-    let isCameraActive = false;
-    let capturedImage: string | null = null;
-    let stream: MediaStream | null = null;
-    let videoElement: HTMLVideoElement;
-    let canvasElement: HTMLCanvasElement;
+	// State variables
+	let isCameraActive = false;
+	let isWaitingForUpload = false;
+	let isWaitingForLocation = false;
+	let uploadFailed = false;
 
-    const locationOptions = {
-        enableHighAccuracy: true
-        // timeout: 10000,
-        // maximumAge: 10000,
-    };
+	// Camera
+	let capturedImage: string | null = null;
+	let stream: MediaStream | null = null;
+	let videoElement: HTMLVideoElement;
+	let canvasElement: HTMLCanvasElement;
 
-    function success(pos) {
-        const crd = pos.coords;
+	// Geolocation
+	let geoWatchId: number | null = null;
+	let latitude: number | null = null;
+	let longitude: number | null = null;
 
-        console.log("Your current position is:");
-        console.log(`Latitude : ${crd.latitude}`);
-        console.log(`Longitude: ${crd.longitude}`);
-        console.log(`More or less ${crd.accuracy} meters.`);
-
-        sendLitterRequest(canvasElement, crd.latitude, crd.longitude)
-    }
-
-    function error(err) {
-        console.warn(`ERROR(${err.code}): ${err.message}`);
-    }
-
-    async function startCamera() {
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({
+	async function startCamera() {
+		try {
+			stream = await navigator.mediaDevices.getUserMedia({
                 audio: false,
-                video: {facingMode: 'environment'}
+                video: { facingMode: 'environment' }
+			});
+			videoElement.srcObject = stream;
+			isCameraActive = true;
+		} catch (error) {
+			console.error('Error starting camera:', error);
+		}
+	}
+
+	function takePicture() {
+		if (videoElement && canvasElement) {
+			const context = canvasElement.getContext('2d');
+			canvasElement.width = videoElement.videoWidth;
+			canvasElement.height = videoElement.videoHeight;
+			context?.drawImage(videoElement, 0, 0);
+			capturedImage = canvasElement.toDataURL('image/png');
+			stopCamera();
+            upload();
+		}
+	}
+
+	function upload() {
+		isWaitingForUpload = true;
+		if (longitude && latitude) {
+			sendLitterRequest(canvasElement, latitude, longitude);
+			isWaitingForUpload = false;
+		} else {
+			isWaitingForLocation = true;
+			console.error("No geolocation data available.");
+            navigator.geolocation.getCurrentPosition((position) =>
+            {
+				const { longitude: lng, latitude: lat } = position.coords;
+                sendLitterRequest(canvasElement, lat, lng)
+            }, (err) => {
+				console.error("Error obtaining geolocation:", err);
+				uploadFailed = true;
             });
-            videoElement.srcObject = stream;
-            isCameraActive = true;
-        } catch (error) {
-            console.error('Error starting camera:', error);
-        }
+            isWaitingForUpload = false;
+		}
     }
 
-    function takePicture() {
-        if (videoElement && canvasElement) {
-            const context = canvasElement.getContext('2d');
-            canvasElement.width = videoElement.videoWidth;
-            canvasElement.height = videoElement.videoHeight;
-            context?.drawImage(videoElement, 0, 0);
-            capturedImage = canvasElement.toDataURL('image/png');
-            stopCamera();
-            navigator.geolocation.getCurrentPosition(success, error, locationOptions);
-        }
-    }
+	function stopCamera() {
+		if (stream) {
+			stream.getTracks().forEach(track => track.stop());
+			isCameraActive = false;
+		}
+	}
 
-    function stopCamera() {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            isCameraActive = false;
-        }
-    }
+	function sendLitterRequest(canvas, lat, lng) {
+		canvas.toBlob(async (blob) => {
+			if (!blob) {
+				console.error("Failed to create blob from canvas.");
+				return;
+			}
 
-    function sendLitterRequest(canvas, lat, lng) {
-        canvas.toBlob(async (blob) => {
-            if (!blob) {
-                console.error("Failed to create blob from canvas.");
-                return;
-            }
+			const reader = new FileReader();
 
-            const reader = new FileReader();
+			// When the file is read as an ArrayBuffer
+			reader.onloadend = () => {
+				const arrayBuffer = reader.result;
+				const byteArray = new Uint8Array(arrayBuffer);
+				console.log("Image converted to Uint8Array. Size:", byteArray.length, "bytes.");
+				uploadAsJson(Array.from(byteArray), blob.type, lat, lng);
+			};
 
-            // When the file is read as an ArrayBuffer
-            reader.onloadend = () => {
-                const arrayBuffer = reader.result;
-                const byteArray = new Uint8Array(arrayBuffer);
-                console.log("Image converted to Uint8Array. Size:", byteArray.length, "bytes.");
-                uploadAsJson(Array.from(byteArray), blob.type, lat, lng);
-            };
+			reader.readAsArrayBuffer(blob);
 
-            reader.readAsArrayBuffer(blob);
+		}, 'image/jpeg', 0.9);
+	}
 
-        }, 'image/jpeg', 0.9);
-    }
-
-    async function uploadAsJson(byteArray, mimeType, lat, lng) {
+	async function uploadAsJson(byteArray, mimeType, lat, lng) {
         // So we can see the picture shortly after it has been taken.
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         const base = PUBLIC_BACKEND_URL;
-        const api_url = `${base}/protected/litter`
+		const api_url = `${base}/protected/litter`
 
         const payload = {
-            "lat": lat,
-            "lng": lng,
-            "file": byteArray,
-            "type": mimeType,
-            "category": "",
-            "brand": "",
-            "weight": 100000,
-            "material": ""
-        }
+			"lat": lat,
+			"lng": lng,
+			"file": byteArray,
+			"type": mimeType
+		}
 
-        try {
-            const response = await fetch(api_url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+		try {
+			const response = await fetch(api_url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('jwt')}`
-                },
-                body: JSON.stringify(payload)
-            });
+				},
+				body: JSON.stringify(payload)
+			});
 
-            if (response.ok) {
-                console.log('Image successfully sent.');
-                const result = await response.json(); // Or response.text()
-                console.log('Server response:', result);
-                capturedImage = null;
-                await startCamera();
-            } else {
-                console.error(`Upload failed: ${response.status} ${response.statusText}`);
-            }
-        } catch (error) {
-            console.error('Error sending image:', error);
-        }
-    }
+			if (response.ok) {
+				console.log('Image successfully sent.');
+				const result = await response.json(); // Or response.text()
+				console.log('Server response:', result);
+				capturedImage = null;
+				await startCamera();
+			} else {
+				console.error(`Upload failed: ${response.status} ${response.statusText}`);
+			}
+		} catch (error) {
+			console.error('Error sending image:', error);
+		}
+	}
 
-    onMount(() => startCamera())
+	function startLocateWatch() {
+		if (!browser || !navigator.geolocation) return;
+		if (geoWatchId) navigator.geolocation.clearWatch(geoWatchId);
+
+		geoWatchId = navigator.geolocation.watchPosition(
+			(pos) => {
+                const coords = pos.coords;
+                latitude = coords.latitude;
+                longitude = coords.longitude;
+                console.log(`Updated position: (${latitude}, ${longitude})`);
+            },
+			(err) => {
+				console.warn(`ERROR(${err.code}): ${err.message}`);
+            },
+			{ enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+		);
+	}
+
+	onMount(() => {
+		startCamera()
+        startLocateWatch()
+	})
+
+    onDestroy(() => {
+		stopCamera();
+	})
 </script>
 
 <div class="relative h-full flex flex-col justify-center items-center">
@@ -149,7 +181,6 @@
                     style="display: {isCameraActive ? 'block' : 'none'}"
             ></video>
         {/if}
-
     </div>
 
 
@@ -170,11 +201,21 @@
             </button>
         {/if}
 
+        {#if isWaitingForUpload}
+            <span class="ml-4">Waiting for upload...</span>
+        {/if}
+
+        {#if isWaitingForLocation}
+            <span class="ml-4">Waiting for location...</span>
+        {/if}
+
+        {#if uploadFailed}
+            <span class="ml-4">Upload failed</span>
+        {/if}
+
         {#if capturedImage}
-            <button class="btn btn-secondary"
-                    on:click={() => navigator.geolocation.getCurrentPosition(success, error, locationOptions)}>Retry
-                Upload
-            </button>
+            <!-- TODO -->
+            <!--<button class="btn btn-secondary" on:click={}>Retry Upload</button>-->
         {/if}
     </div>
 
