@@ -3,8 +3,8 @@ POST {{baseUrl}}/public/auth/signin
 Content-Type: application/json
 
 {
-  "username": "rafael2",
-  "password": "abcdef"
+  "username": "111",
+  "password": "111"
 }
 
 > {%
