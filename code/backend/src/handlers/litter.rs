@@ -1,5 +1,3 @@
-use std::{process::id, time::SystemTime};
-
 use actix_web::{
     Responder, get, post,
     web::{self, Json},
@@ -103,5 +101,7 @@ pub async fn get_litter(
     let user = models::user::User::from_id(&db, usersession.id)
         .await
         .unwrap();
-    Ok(web::Json(user.litter.into_iter().map(|l| l.into()).collect()))
+    Ok(web::Json(
+        user.litter.into_iter().map(|l| l.into()).collect(),
+    ))
 }

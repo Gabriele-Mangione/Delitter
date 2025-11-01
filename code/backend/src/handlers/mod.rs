@@ -1,7 +1,6 @@
 use actix_web::{
     HttpResponse, Responder, ResponseError, get,
     http::StatusCode,
-    post,
     web::{self, Json},
 };
 use serde_json::json;
