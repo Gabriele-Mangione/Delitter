@@ -2,3 +2,4 @@
 /code/backend/target
 
 data/*
+.DS_Store

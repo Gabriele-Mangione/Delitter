@@ -1,56 +1,14 @@
-use actix_web::{App, HttpServer, Responder, post, web};
+use actix_web::{
+    App, HttpResponse, HttpServer,
+    web::{self},
+};
 use dotenvy::dotenv;
-use mongodb::{Client, Database, bson::doc};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
+use mongodb::Client;
 use std::env;
 
+pub mod handlers;
+pub mod models;
 pub mod services;
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    sub: String,
-    exp: usize,
-}
-
-#[derive(Debug, Deserialize)]
-struct SignupData {
-    username: String,
-    password: String,
-}
-
-#[post("/v1/public/signup")]
-async fn signup(data: web::Json<SignupData>, db: web::Data<Database>) -> impl Responder {
-    let res = services::auth::signup(db, &data.username, &data.password).await;
-
-    match res {
-        Ok((id, jwt)) => {
-            log::info!("Login successful: {}", id);
-
-            web::Json(json!({
-                "jwt": jwt,
-            }))
-        }
-        Err(err) => {
-            log::info!("Login failed with {:?}", err);
-
-            web::Json(json!({
-                "err": err,
-            }))
-        }
-    }
-}
-
-#[derive(Debug, Deserialize)]
-struct LoginData {
-    username: String,
-    password: String,
-}
-
-#[post("/v1/public/login")]
-async fn login(data: web::Json<LoginData>, db: web::Data<Database>) -> impl Responder {
-    web::Json("")
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -67,8 +25,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db.clone()))
-            .service(signup)
-            .service(login)
+            .service(handlers::auth::signin)
+            .service(handlers::auth::signup)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

@@ -107,7 +107,7 @@ async def analyze_litter_image(
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "litter-analysis-api"}
+    return {"status": "healthy", "service": "litter-analysis-api", "timestamp": __import__('time').time()}
 
 
 if __name__ == "__main__":
