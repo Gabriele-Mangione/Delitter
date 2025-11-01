@@ -10,7 +10,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .analyzer import analyze_image
-from .models import LitterDetection
+from .model_output_structure import LitterDetection
 
 # Initialize FastAPI app
 app = FastAPI(

@@ -6,6 +6,8 @@ import sys
 from typing import List
 
 from pydantic import ValidationError
+from bounding_box import draw_boxes_pil
+
 
 # Support both direct execution and module execution
 try:
@@ -33,6 +35,25 @@ def main(argv: List[str]) -> None:
 
         # Display analysis results
         print(detection.analysis.model_dump_json(indent=2, ensure_ascii=False))
+        
+        # # Draw bounding boxes if available
+        # boxes = []
+        # labels = []
+        # for obj in detection.analysis.objects:
+        #     if obj.bounding_box:
+        #         bb = obj.bounding_box
+        #         boxes.append((bb["x"], bb["y"], bb["width"], bb["height"]))
+        #         labels.append(obj.category)
+        # if boxes:
+        #     out_path = image_path.rsplit(".", 1)[0] + "_annotated.jpg"
+        #     draw_boxes_pil(
+        #         image_path=image_path,
+        #         boxes=boxes,
+        #         labels=labels,
+        #         out_path=out_path,
+        #         normalized=True,
+        #     )
+
     except ValidationError as ve:
         # Fall back to raw text if structured parse fails
         print("Validation failed:", ve, file=sys.stderr)
