@@ -65,9 +65,9 @@
 
     <div class="controls flex-row">
         {#if !isCameraActive && !capturedImage}
-            <button class="btn btn-secondary flex justify-center" on:click={startCamera}>Allow Camera</button>
+            <button class="btn bg-green-800 flex justify-center" on:click={startCamera}>Allow Camera</button>
         {:else if isCameraActive}
-            <button class="btn btn-secondary" on:click={takePicture}>
+            <button class="btn bg-green-800" on:click={takePicture}>
                 <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                      stroke="currentColor">
                     <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -80,8 +80,8 @@
         {/if}
 
         {#if capturedImage}
-            <button on:click={downloadPicture}>Download Picture</button>
-            <button on:click={() => { capturedImage = null; startCamera(); }}>Take Another</button>
+            <button class="btn bg-green-800" on:click={downloadPicture}>Download Picture</button>
+            <button class="btn bg-green-800" on:click={() => { capturedImage = null; startCamera(); }}>Take Another</button>
         {/if}
     </div>
 
