@@ -1,6 +1,6 @@
 use std::env;
 
-use log::{debug, error, info, log};
+use log::{debug, error, info};
 use reqwest::Client;
 use reqwest::multipart::{Form, Part};
 
