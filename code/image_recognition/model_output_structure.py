@@ -7,10 +7,10 @@ from pydantic import BaseModel, Field
 
 # --- Type definitions ---
 Category = Literal[
-    "can", "bottle", "cigarette_butt", "snooze_pouch", "vape", "bag", "cup", 
-    "snack_wrapper", "poop bags", "shard", "film_tarp_wrap", "cup_lid", "straw", "chewing_gum", "other"]
+    "Can", "Bottle", "Cigarette Butt", "Snooze Pouch", "Vape", "Bag", "Cup", 
+    "Snack Wrapper", "Poop Bag", "Shard", "Film/Tarp/Wrap", "Cup Lid", "Straw", "Chewing Gum", "Other"]
 
-Material = Literal["aluminium", "plastic", "glass", "paper", "cardboard", "metal", "ruber", "textile", "other"]
+Material = Literal["Aluminium", "Plastic", "Glass", "Paper", "Cardboard", "Metal", "Ruber", "Textile", "Other"]
 
 
 class DetectedObject(BaseModel):
