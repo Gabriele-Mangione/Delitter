@@ -25,10 +25,16 @@ class DetectedObject(BaseModel):
 
 
 class LitterAnalysis(BaseModel):
-    """Complete analysis result for a litter image."""
+    """Analysis result from AI model - contains detected objects and computed statistics."""
     objects: List[DetectedObject]
-    counts: Dict[str, int]
-    total_items: int
+    counts: Optional[Dict[str, int]] = None
+    total_items: Optional[int] = None
     weight_g_estimate: Optional[float] = None
     notes: Optional[str] = None
-    processing_time_ms: Optional[float] = None  # Processing time in milliseconds
+
+
+class LitterDetection(BaseModel):
+    """Complete detection result including analysis and metadata."""
+    analysis: LitterAnalysis
+    processing_time_ms: float
+    model: str

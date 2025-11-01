@@ -3,13 +3,18 @@ from __future__ import annotations
 
 import base64
 import os
+import time
 from pathlib import Path
 from typing import Dict
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from .models import LitterAnalysis
+# Support both direct execution and module execution
+try:
+    from .models import LitterAnalysis, LitterDetection
+except ImportError:
+    from models import LitterAnalysis, LitterDetection
 
 # --- Load environment variables ---
 load_dotenv()
@@ -36,13 +41,13 @@ AVG_WEIGHT_G = {
 }
 
 SYSTEM_INSTRUCTIONS = """\
-You analyze photos of litter from cleanup events and return a strict JSON object that matches the provided schema.
+You analyze cleanup photos and return ONLY JSON matching the schema. No extra text.
 Rules:
-- Identify each visible litter item (not tools/hands), focusing on packaging/containers.
-- For cans, set category=beverage_can and material=aluminium.
-- Infer brand from visible text/logos if reasonably clear; else omit.
-- Be conservative: only include items you can see; do not hallucinate masks/boxes.
-- Provide counts by "category" and "material", plus a brief note if anything is uncertain.
+- List each visible litter item (packaging/containers only, not tools/hands).
+- For cans: set category=beverage_can and material=aluminium.
+- Infer brand from visible text/logos if clear; otherwise set to null.
+- Be conservative: only include items you can see; do not hallucinate.
+- Provide counts by category and material, plus weight estimate and notes if uncertain.
 """
 
 
@@ -53,20 +58,22 @@ def image_to_data_url(p: Path) -> str:
     return f"data:{mime};base64,{b64}"
 
 
-def analyze_image(image_path: str, model: str = "gpt-5") -> LitterAnalysis:
+def analyze_image(image_path: str, model: str = "gpt-4o-2024-08-06") -> LitterDetection:
     """
-    Analyze a litter image and return structured analysis results.
+    Analyze a litter image and return structured detection results.
 
     Args:
         image_path: Path to the image file to analyze
-        model: OpenAI model to use (default: gpt-5)
+        model: OpenAI model to use (default: gpt-4o-2024-08-06)
 
     Returns:
-        LitterAnalysis object with detected objects and metadata
+        LitterDetection object with analysis results and metadata
 
     Raises:
         FileNotFoundError: If the image file doesn't exist
     """
+    start_time = time.time()
+
     p = Path(image_path)
     if not p.exists():
         raise FileNotFoundError(p)
@@ -88,22 +95,29 @@ def analyze_image(image_path: str, model: str = "gpt-5") -> LitterAnalysis:
         max_output_tokens=800,
     )
 
-    result: LitterAnalysis = resp.output_parsed  # already validated
+    analysis: LitterAnalysis = resp.output_parsed  # already validated
 
     # If weight is missing, compute a quick estimate here
-    if result.weight_g_estimate is None:
+    if analysis.weight_g_estimate is None:
         w = 0.0
-        for obj in result.objects:
+        for obj in analysis.objects:
             w += AVG_WEIGHT_G.get(obj.category, AVG_WEIGHT_G["other"])
-        result.weight_g_estimate = round(w, 1)
+        analysis.weight_g_estimate = round(w, 1)
 
     # If counts/total missing, compute here as a safety net
-    if not result.counts:
+    if not analysis.counts:
         counts: Dict[str, int] = {}
-        for obj in result.objects:
+        for obj in analysis.objects:
             counts[obj.category] = counts.get(obj.category, 0) + 1
-        result.counts = counts
-    if not result.total_items:
-        result.total_items = sum(result.counts.values())
+        analysis.counts = counts
+    if not analysis.total_items:
+        analysis.total_items = sum(analysis.counts.values())
 
-    return result
+    # Calculate processing time and wrap in detection result
+    processing_time_ms = (time.time() - start_time) * 1000
+
+    return LitterDetection(
+        analysis=analysis,
+        processing_time_ms=round(processing_time_ms, 2),
+        model=model
+    )

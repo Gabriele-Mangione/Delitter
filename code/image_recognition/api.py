@@ -2,8 +2,6 @@
 """REST API for litter image analysis."""
 from __future__ import annotations
 
-import time
-from io import BytesIO
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Annotated
@@ -12,7 +10,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from .analyzer import analyze_image
-from .models import LitterAnalysis
+from .models import LitterDetection
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -47,10 +45,10 @@ async def root():
     }
 
 
-@app.post("/v1/analyze", response_model=LitterAnalysis)
+@app.post("/v1/analyze", response_model=LitterDetection)
 async def analyze_litter_image(
     file: Annotated[UploadFile, File(description="Image file (PNG or JPG) containing litter to analyze")]
-) -> LitterAnalysis:
+) -> LitterDetection:
     """
     Analyze a litter image and return detected objects with metadata.
 
@@ -58,13 +56,11 @@ async def analyze_litter_image(
         file: Uploaded image file (PNG or JPG)
 
     Returns:
-        LitterAnalysis object containing detected objects, counts, weight estimate, and processing time
+        LitterDetection object containing analysis results, processing time, and model info
 
     Raises:
         HTTPException: If the file type is invalid or processing fails
     """
-    start_time = time.time()
-
     # Validate file type
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
@@ -92,13 +88,8 @@ async def analyze_litter_image(
             temp_path = temp_file.name
 
         try:
-            # Analyze the image
-            result = analyze_image(temp_path, model="gpt-5")
-
-            # Add processing time
-            processing_time_ms = (time.time() - start_time) * 1000
-            result.processing_time_ms = round(processing_time_ms, 2)
-
+            # Analyze the image (processing time is tracked inside)
+            result = analyze_image(temp_path)
             return result
         finally:
             # Clean up temp file

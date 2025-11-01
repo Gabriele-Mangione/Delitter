@@ -40,12 +40,14 @@ cp .env.example .env
 Analyze an image from the command line:
 
 ```bash
-# Using default model (gpt-5)
+# Using default model
 python -m image_recognition.litter_vision path/to/image.jpg
 
-# Specify a different model
-python -m image_recognition.litter_vision path/to/image.jpg gpt-4-vision-preview
+# Specify a custom model
+python -m image_recognition.litter_vision path/to/image.jpg <model-name>
 ```
+
+The CLI shows processing time and outputs the analysis as JSON.
 
 
 ### REST API Server
