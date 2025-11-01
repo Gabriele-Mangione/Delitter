@@ -3,16 +3,24 @@
     import Dock from "$lib/Dock.svelte";
     import favicon from '$lib/assets/favicon.svg';
     import NavBar from "$lib/NavBar.svelte";
+    import LoginRegister from "$lib/LoginRegister.svelte";
+
+    // Authentication
+    import { auth } from '$lib/stores/auth';
+    $: loggedIn = $auth !== null;
 </script>
 
 <svelte:head>
     <link rel="icon" href={favicon}/>
 </svelte:head>
 
-<NavBar></NavBar>
 
-<div class="m-2">
-    <slot/>
-</div>
-
-<Dock></Dock>
+{#if loggedIn}
+    <NavBar/>
+    <div class="m-2">
+        <slot/>
+    </div>
+    <Dock/>
+{:else}
+    <LoginRegister/>
+{/if}
