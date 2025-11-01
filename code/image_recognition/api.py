@@ -40,6 +40,7 @@ async def root():
         "endpoints": {
             "analyze": "/v1/analyze",
             "docs": "/docs",
+            "health": "/health",
             "redoc": "/redoc",
         }
     }
