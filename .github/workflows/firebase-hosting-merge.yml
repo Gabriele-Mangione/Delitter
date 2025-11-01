@@ -18,6 +18,7 @@ jobs:
         working-directory: ./code/frontend/
         env:
           PUBLIC_BACKEND_URL: https://delitter-backend.onrender.com/v1
+          PUBLIC_GIT_HASH: ${{ github.sha }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           entryPoint: ./code/frontend/
