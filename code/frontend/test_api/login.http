@@ -6,3 +6,7 @@ Content-Type: application/json
   "username": "rafael",
   "password": "abcdef"
 }
+
+> {%
+    client.global.set("authToken", response.body.jwt);
+%}
