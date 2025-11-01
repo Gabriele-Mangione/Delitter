@@ -51,16 +51,20 @@
 			sendLitterRequest(canvasElement, latitude, longitude);
 			isWaitingForUpload = false;
 		} else {
-			isWaitingForLocation = true;
 			console.error("No geolocation data available.");
+			isWaitingForLocation = true;
+
+            // Waits for location indefinitely!
             navigator.geolocation.getCurrentPosition((position) =>
             {
+				isWaitingForLocation = false;
 				const { longitude: lng, latitude: lat } = position.coords;
                 sendLitterRequest(canvasElement, lat, lng)
             }, (err) => {
 				console.error("Error obtaining geolocation:", err);
 				uploadFailed = true;
             });
+
             isWaitingForUpload = false;
 		}
     }
@@ -119,6 +123,7 @@
 			});
 
 			if (response.ok) {
+				isWaitingForUpload = false;
 				console.log('Image successfully sent.');
 				const result = await response.json(); // Or response.text()
 				console.log('Server response:', result);
@@ -126,6 +131,7 @@
 				await startCamera();
 			} else {
 				console.error(`Upload failed: ${response.status} ${response.statusText}`);
+				uploadFailed = true;
 			}
 		} catch (error) {
 			console.error('Error sending image:', error);
@@ -202,20 +208,18 @@
         {/if}
 
         {#if isWaitingForUpload}
-            <span class="ml-4">Waiting for upload...</span>
+            <span class="align-[-8px] align-middle loading loading-ring loading-lg"/>
+            <span class="">Waiting for upload...</span>
         {/if}
 
         {#if isWaitingForLocation}
-            <span class="ml-4">Waiting for location...</span>
+            <span class="align-[-8px] loading loading-ring loading-lg"/>
+            <span class="">Waiting for location...</span>
         {/if}
 
         {#if uploadFailed}
             <span class="ml-4">Upload failed</span>
-        {/if}
-
-        {#if capturedImage}
-            <!-- TODO -->
-            <!--<button class="btn btn-secondary" on:click={}>Retry Upload</button>-->
+            <button class="btn btn-secondary" on:click={() => upload()}>Retry Upload</button>
         {/if}
     </div>
 
