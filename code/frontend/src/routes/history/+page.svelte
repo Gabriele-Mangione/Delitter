@@ -55,23 +55,30 @@
             }
             ;
             const findings = await res.json(); // array of objects
+            console.log({findings})
 
             items = findings.map((item: Finding) => {
-                // TODO: Remove
-                item.brand = "Coca Cola"
-                item.category = "Can"
-                item.material = "Aluminum"
-                item.weight = 10  // g
+                const itemClone = { ...item }
 
-                const bytes = new Uint8Array(item.file)
+                if (!itemClone.brand) {
+                    itemClone.brand = "unknown brand"
+                }
+                if (!itemClone.category) {
+                    itemClone.category = "unknown category"
+                }
+                if (!itemClone.material) {
+                    itemClone.category = "unknown material"
+                }
+
+                const bytes = new Uint8Array(itemClone.file)
                 const blob = new Blob([bytes], {type: 'image/jpeg'})
                 const url = URL.createObjectURL(blob)
 
                 // Fix date
-                const fixed = item.date.replace(" +00:00:00", "Z"); // convert to UTC
+                const fixed = itemClone.date.replace(" +00:00:00", "Z"); // convert to UTC
 
                 return {
-                    finding: item,
+                    finding: itemClone,
                     image_url: url,
                     date: new Date(fixed)
                 }
