@@ -1,0 +1,19 @@
+### Report new piece of litter
+POST localhost:7001/v1/protected/litter
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "lat": 1.0,
+  "lng": 2.0,
+  "file": [],
+  "type": "jpg",
+  "tags": [
+    "can",
+    "Fanta"
+  ]
+}
+
+### Get all reported litter
+GET localhost:7001/v1/protected/litter
+Authorization: Bearer {{authToken}}
