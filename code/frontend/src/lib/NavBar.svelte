@@ -13,7 +13,7 @@
     $: title = pathToTitle($page.url.pathname);
 
     function logout() {
-        auth.setToken("");
+        auth.clear();
     }
 </script>
 
