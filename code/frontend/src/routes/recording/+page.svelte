@@ -49,8 +49,10 @@
 <div class="recording-page">
     <h1>Take litter picture</h1>
 
-	<video bind:this={videoElement} autoplay style="display: {isCameraActive ? 'block' : 'none'}"></video>
-	<canvas bind:this={canvasElement} style="display: none;"></canvas>
+    <video bind:this={videoElement} playsinline
+           muted
+           autoplay style="display: {isCameraActive ? 'block' : 'none'}"></video>
+    <canvas bind:this={canvasElement} style="display: none;"></canvas>
 
 	{#if capturedImage}
 		<img src={capturedImage} alt="Captured litter" />

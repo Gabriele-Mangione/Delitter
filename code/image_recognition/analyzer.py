@@ -12,9 +12,9 @@ from openai import OpenAI
 
 # Support both direct execution and module execution
 try:
-    from .models import LitterAnalysis, LitterDetection
+    from .model_output_structure import LitterAnalysis, LitterDetection
 except ImportError:
-    from models import LitterAnalysis, LitterDetection
+    from model_output_structure import LitterAnalysis, LitterDetection
 
 # --- Load environment variables ---
 load_dotenv()
@@ -26,7 +26,7 @@ if not api_key:
 client = OpenAI(api_key=api_key)
 
 # --- Constants ---
-# Simple class → avg weight table; tune as you learn
+# Simple class → avg weight (in g) table; tune as you learn
 AVG_WEIGHT_G = {
     "beverage_can": 14.0,
     "plastic_bottle": 20.0,
@@ -45,9 +45,9 @@ You analyze cleanup photos and return ONLY JSON matching the schema. No extra te
 Rules:
 - List each visible litter item (packaging/containers only, not tools/hands).
 - For cans: set category=beverage_can and material=aluminium.
-- Infer brand from visible text/logos if clear; otherwise set to null.
+- Infer brand from visible text/logos if absolutely certain; otherwise set to null.
 - Be conservative: only include items you can see; do not hallucinate.
-- Provide counts by category and material, plus weight estimate and notes if uncertain.
+- Provide counts by category, plus weight estimate and notes if uncertain.
 """
 
 
@@ -97,12 +97,10 @@ def analyze_image(image_path: str, model: str = "gpt-4o-2024-08-06") -> LitterDe
 
     analysis: LitterAnalysis = resp.output_parsed  # already validated
 
-    # If weight is missing, compute a quick estimate here
-    if analysis.weight_g_estimate is None:
-        w = 0.0
-        for obj in analysis.objects:
-            w += AVG_WEIGHT_G.get(obj.category, AVG_WEIGHT_G["other"])
-        analysis.weight_g_estimate = round(w, 1)
+    # If weight estimate is missing, compute a quick estimate here
+    for obj in analysis.objects:
+        if obj.weight_g_estimate is None:
+            obj.weight_g_estimate = AVG_WEIGHT_G.get(obj.category, AVG_WEIGHT_G["other"])
 
     # If counts/total missing, compute here as a safety net
     if not analysis.counts:
