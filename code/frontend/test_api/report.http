@@ -1,5 +1,5 @@
 ### Report new piece of litter
-POST localhost:7001/v1/protected/litter
+POST {{baseUrl}}/protected/litter
 Authorization: Bearer {{authToken}}
 Content-Type: application/json
 
@@ -15,5 +15,5 @@ Content-Type: application/json
 }
 
 ### Get all reported litter
-GET localhost:7001/v1/protected/litter
+GET {{baseUrl}}/protected/litter
 Authorization: Bearer {{authToken}}

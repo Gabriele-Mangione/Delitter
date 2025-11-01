@@ -1,9 +1,9 @@
 ### Register / login
-POST localhost:7001/v1/public/auth/signin
+POST {{baseUrl}}/public/auth/signin
 Content-Type: application/json
 
 {
-  "username": "rafael",
+  "username": "rafael2",
   "password": "abcdef"
 }
 
