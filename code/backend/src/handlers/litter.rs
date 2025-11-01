@@ -1,15 +1,11 @@
 use actix_web::{
     Responder, get, post,
-    web::{self},
+    web::{self, Json},
 };
 use mongodb::{Database, bson::doc};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
-use crate::{
-    handlers::HttpError,
-    services::{self, auth::UserSession},
-};
+use crate::{handlers::HttpError, models, services::auth::UserSession};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -40,6 +36,7 @@ pub async fn create_litter(
     db: web::Data<Database>,
     usersession: UserSession,
 ) -> Result<impl Responder, HttpError> {
+    let user = models::user::User::from_id(&db, usersession.id).await;
     Ok(web::Json("todo"))
 }
 
@@ -57,6 +54,6 @@ pub async fn create_litter(
 pub async fn get_litter(
     db: web::Data<Database>,
     usersession: UserSession,
-) -> Result<impl Responder, HttpError> {
-    Ok(web::Json("todo"))
+) -> Result<Json<Vec<models::litter::Litter>>, HttpError> {
+    Ok(web::Json(vec![models::litter::Litter::default()]))
 }

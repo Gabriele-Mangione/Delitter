@@ -56,12 +56,12 @@ pub async fn signup(
         .to_string();
 
     let new_user = User {
-        _id: None,
         username: user.to_string(),
         password_hash,
+        ..Default::default()
     };
 
-    let result_id = new_user.persist(db).await;
+    let result_id = new_user.persist(&db).await;
 
     let id = result_id.ok_or(SignupError::UnknownError)?;
 
