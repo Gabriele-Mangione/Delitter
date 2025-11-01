@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 from typing import Dict
 
+import httpx
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -19,7 +20,20 @@ load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise SystemExit('Missing OPENAI_API_KEY environment variable. Please set it in your .env file.')
-client = OpenAI(api_key=api_key)
+
+# Configure proxy if set in environment
+http_client = None
+https_proxy = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy")
+
+if https_proxy:
+    # Create httpx client with proxy configuration (OpenAI API uses HTTPS)
+    # Note: verify=False disables SSL verification - needed for some corporate proxies
+    http_client = httpx.Client(proxy=https_proxy, verify=False)
+    print(f"[INFO] Using proxy: {https_proxy}")
+else:
+    print("[INFO] No proxy configured")
+
+client = OpenAI(api_key=api_key, http_client=http_client)
 
 # --- Constants ---
 # Simple class → avg weight (in g) table; tune as you learn
@@ -81,15 +95,19 @@ def analyze_image(image_path: str, model: str = "gpt-4o-2024-08-06") -> LitterDe
     ]
 
     # Use Responses API with Pydantic parsing
-    resp = client.responses.parse(
-        model=model,
-        input=[
-            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
-            {"role": "user", "content": content},
-        ],
-        text_format=LitterAnalysis,  # ask for structured output as this Pydantic model
-        max_output_tokens=800,
-    )
+    try:
+        resp = client.responses.parse(
+            model=model,
+            input=[
+                {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+                {"role": "user", "content": content},
+            ],
+            text_format=LitterAnalysis,  # ask for structured output as this Pydantic model
+            max_output_tokens=800,
+        )
+    except Exception as api_error:
+        print(f"[ERROR] OpenAI API error: {type(api_error).__name__}: {str(api_error)}")
+        raise
 
     analysis: LitterAnalysis = resp.output_parsed  # already validated
 
