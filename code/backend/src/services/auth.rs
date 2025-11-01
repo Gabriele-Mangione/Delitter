@@ -4,24 +4,20 @@ use std::{
     time::{Duration, Instant},
 };
 
-use actix_web::web;
+use futures::future::{Ready, ready};
+
+use actix_web::{FromRequest, HttpRequest, dev::Payload, web};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use log::{error, info};
 use mongodb::{
     Database,
-    bson::{Document, doc, oid::ObjectId},
+    bson::{doc, oid::ObjectId},
 };
 use password_hash::{SaltString, rand_core::OsRng};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-struct User {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    _id: Option<ObjectId>,
-    username: String,
-    password_hash: String,
-}
+use crate::{handlers::HttpError, models::user::User};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum SignupError {
@@ -34,8 +30,6 @@ pub async fn signup(
     user: &str,
     password: &str,
 ) -> Result<(ObjectId, Jwt), SignupError> {
-    let users = db.collection::<User>("users");
-
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let password_hash = argon2
@@ -49,18 +43,9 @@ pub async fn signup(
         password_hash,
     };
 
-    let insert_result = users.insert_one(&new_user).await;
+    let result_id = new_user.persist(db).await;
 
-    if let Err(e) = &insert_result {
-        error!("Error when inserting user: {}", e);
-    }
-
-    let insert_result = insert_result.map_err(|_| SignupError::UnknownError)?;
-
-    let id = insert_result
-        .inserted_id
-        .as_object_id()
-        .ok_or(SignupError::WrongCredentials)?;
+    let id = result_id.ok_or(SignupError::UnknownError)?;
 
     let jwt = Jwt::new(Extras {
         id: id.to_hex(),
@@ -74,6 +59,38 @@ pub async fn signup(
     let jwt = jwt.map_err(|_| SignupError::UnknownError)?;
 
     Ok((id, jwt))
+}
+
+pub async fn signin(
+    db: web::Data<Database>,
+    user: &str,
+    password: &str,
+) -> Option<(ObjectId, Jwt)> {
+    let users = db.collection::<User>("users");
+
+    let user: User = users.find_one(doc! { "username": &user }).await.unwrap()?;
+
+    let parsed_hash = PasswordHash::new(&user.password_hash).unwrap();
+    let argon2 = Argon2::default();
+    if argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_err()
+    {
+        info!("Invalid credentials!");
+        return None;
+    }
+
+    let id = user._id.expect("Id is always there when reading");
+    let jwt = Jwt::new(Extras {
+        id: id.to_hex(),
+        username: user.username,
+    });
+
+    if let Err(e) = &jwt {
+        error!("Error when inserting user / creating jwt: {}", e);
+    }
+
+    jwt.ok().map(|jwt| (id, jwt))
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -108,6 +125,10 @@ impl Jwt {
     }
 }
 
+struct UserSession {
+    id: ObjectId,
+}
+
 impl TryInto<ObjectId> for Jwt {
     type Error = jsonwebtoken::errors::Error;
 
@@ -129,36 +150,29 @@ impl TryInto<ObjectId> for Jwt {
     }
 }
 
-pub async fn signin(
-    db: web::Data<Database>,
-    user: &str,
-    password: &str,
-) -> Option<(ObjectId, Jwt)> {
-    let users = db.collection::<User>("users");
+impl FromRequest for UserSession {
+    type Error = HttpError;
+    type Future = Ready<Result<Self, Self::Error>>;
 
-    let user: User = users.find_one(doc! { "username": &user }).await.unwrap()?;
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        let auth_header = req
+            .headers()
+            .get("Authorization")
+            .and_then(|v| v.to_str().ok());
 
-    let parsed_hash = PasswordHash::new(&user.password_hash).unwrap();
-    let argon2 = Argon2::default();
-    if argon2
-        .verify_password(password.as_bytes(), &parsed_hash)
-        .is_err()
-    {
-        info!("Invalid credentials!");
-        return None;
+        if let Some(header_value) = auth_header {
+            if let Some(token) = header_value.strip_prefix("Bearer ") {
+                let id: Result<ObjectId, _> = Jwt(token.to_string()).try_into();
+
+                match id {
+                    Ok(id) => return ready(Ok(UserSession { id })),
+                    Err(_) => return ready(Err(HttpError::InvalidToken)),
+                }
+            }
+        }
+
+        ready(Err(HttpError::InvalidToken))
     }
-
-    let id = user._id.expect("Id is always there when reading");
-    let jwt = Jwt::new(Extras {
-        id: id.to_hex(),
-        username: user.username,
-    });
-
-    if let Err(e) = &jwt {
-        error!("Error when inserting user / creating jwt: {}", e);
-    }
-
-    jwt.ok().map(|jwt| (id, jwt))
 }
 
 struct Entry {
