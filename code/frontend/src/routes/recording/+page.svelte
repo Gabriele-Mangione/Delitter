@@ -128,6 +128,10 @@
 		startCamera()
         startLocateWatch()
 	})
+
+    onDestroy(() => {
+		stopCamera();
+	})
 </script>
 
 <div class="h-center flex flex-col justify-center items-center">
