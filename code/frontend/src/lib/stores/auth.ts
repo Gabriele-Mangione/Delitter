@@ -19,4 +19,23 @@ function createAuth() {
     };
 }
 
+function createUsername() {
+    const initial = browser ? localStorage.getItem('username') : null;
+    const { subscribe, set } = writable<string | null>(initial);
+
+    if (browser) {
+        subscribe((value) => {
+            if (value) localStorage.setItem('username', value);
+            else localStorage.removeItem('username');
+        });
+    }
+
+    return {
+        subscribe,
+        setName: (n: string) => set(n),
+        clear: () => set(null)
+    };
+}
+
 export const auth = createAuth();
+export const username = createUsername();

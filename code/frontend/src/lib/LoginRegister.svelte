@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { auth } from '$lib/stores/auth';
+    import { auth, username as userStore } from '$lib/stores/auth';
     import { PUBLIC_BACKEND_URL } from '$env/static/public';
 
     let username = '';
@@ -32,7 +32,10 @@
 
             if (data.jwt) {
                 auth.setToken(data.jwt); // triggers reactive update in layout
-                response = 'Registered successfully. Token saved locally.';
+                // Save username in the username store (use returned username if provided, otherwise the input)
+                const savedName = data?.username ?? username;
+                userStore.setName(savedName);
+                response = isSignup ? 'Registered successfully. Token and username saved locally.' : 'Logged in successfully. Token and username saved locally.';
             } else {
                 response = 'Unexpected response format.';
             }
