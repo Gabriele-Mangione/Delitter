@@ -9,8 +9,8 @@ from typing import Annotated
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from .analyzer import analyze_image
-from .models import LitterDetection
+from analyzer import analyze_image
+from models import LitterDetection
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -107,7 +107,7 @@ async def analyze_litter_image(
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "service": "litter-analysis-api"}
+    return {"status": "healthy", "service": "litter-analysis-api", "timestamp": __import__('time').time()}
 
 
 if __name__ == "__main__":
