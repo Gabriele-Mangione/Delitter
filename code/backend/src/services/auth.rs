@@ -1,14 +1,14 @@
 use std::{
     collections::HashMap,
     str::FromStr,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use futures::future::{Ready, ready};
 
 use actix_web::{FromRequest, HttpRequest, dev::Payload, web};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, TokenData, Validation};
 use log::{debug, error, info};
 use mongodb::{
     Database,
@@ -169,14 +169,15 @@ impl TryInto<ObjectId> for Jwt {
     type Error = jsonwebtoken::errors::Error;
 
     fn try_into(self) -> Result<ObjectId, Self::Error> {
-        let tokendata = jsonwebtoken::decode(
+        let tokendata: TokenData<Claims> = jsonwebtoken::decode(
             self.0,
             &DecodingKey::from_secret("secret".as_ref()),
             &Validation::new(jsonwebtoken::Algorithm::HS512),
         )?;
         debug!("Tokendata could be extracted {:?}", tokendata);
 
-        let claims: Claims = tokendata.claims;
+        // let claims: Claims = tokendata.claims;
+
         let id = tokendata
             .header
             .extras
@@ -215,18 +216,4 @@ impl FromRequest for UserSession {
 
         ready(Err(HttpError::InvalidToken))
     }
-}
-
-struct Entry {
-    img: Vec<u8>,
-    // Count / Kind / Brand
-    tags: Vec<(u8, String, String)>,
-}
-
-struct Report {
-    entries: Vec<Entry>,
-    route: Vec<(u8, u8)>,
-    distance: u32,
-    date: Instant,
-    time: Duration,
 }
