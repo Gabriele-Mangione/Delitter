@@ -1,5 +1,5 @@
 use actix_web::{
-    App, HttpResponse, HttpServer,
+    App, HttpServer,
     web::{self},
 };
 use dotenvy::dotenv;
@@ -27,6 +27,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(db.clone()))
             .service(handlers::auth::signin)
             .service(handlers::auth::signup)
+            .service(handlers::litter::create_litter)
+            .service(handlers::litter::get_litter)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

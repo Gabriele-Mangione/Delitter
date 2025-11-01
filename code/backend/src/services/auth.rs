@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     str::FromStr,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use futures::future::{Ready, ready};
@@ -9,7 +9,7 @@ use futures::future::{Ready, ready};
 use actix_web::{FromRequest, HttpRequest, dev::Payload, web};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
-use log::{error, info};
+use log::{debug, error, info};
 use mongodb::{
     Database,
     bson::{doc, oid::ObjectId},
@@ -23,6 +23,24 @@ use crate::{handlers::HttpError, models::user::User};
 pub enum SignupError {
     WrongCredentials,
     UnknownError,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Jwt(String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Claims {
+    exp: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct Extras {
+    id: String,
+    username: String,
+}
+
+pub struct UserSession {
+    pub id: ObjectId,
 }
 
 pub async fn signup(
@@ -68,7 +86,22 @@ pub async fn signin(
 ) -> Option<(ObjectId, Jwt)> {
     let users = db.collection::<User>("users");
 
-    let user: User = users.find_one(doc! { "username": &user }).await.unwrap()?;
+    let user: Result<Option<User>, _> = users.find_one(doc! { "username": &user }).await;
+
+    let user = match user {
+        Ok(u) => u,
+        Err(e) => {
+            error!("Error when searching for username in db: {}", e);
+            return None;
+        }
+    };
+    let user = match user {
+        Some(u) => u,
+        None => {
+            info!("Username not found in db!");
+            return None;
+        }
+    };
 
     let parsed_hash = PasswordHash::new(&user.password_hash).unwrap();
     let argon2 = Argon2::default();
@@ -93,40 +126,32 @@ pub async fn signin(
     jwt.ok().map(|jwt| (id, jwt))
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct Jwt(String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Claims {}
-#[derive(Debug, Clone, Serialize)]
-struct Extras {
-    id: String,
-    username: String,
-}
-
 impl Jwt {
     fn new(extras: Extras) -> anyhow::Result<Self> {
         let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::HS512);
         header.kid = Some("blabla".to_owned());
 
         header.extras = HashMap::with_capacity(1);
-        header.extras.insert("userid".to_string(), extras.id);
+        header.extras.insert("id".to_string(), extras.id);
         header
             .extras
             .insert("username".to_string(), extras.username);
 
+        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+
+        // 1 week in seconds
+        let one_week = 7 * 24 * 60 * 60;
+
         let token = jsonwebtoken::encode(
             &header,
-            &Claims {},
+            &Claims {
+                exp: now + one_week,
+            },
             &EncodingKey::from_secret("secret".as_ref()),
         )?;
 
         Ok(Self(token))
     }
-}
-
-struct UserSession {
-    id: ObjectId,
 }
 
 impl TryInto<ObjectId> for Jwt {
@@ -136,15 +161,16 @@ impl TryInto<ObjectId> for Jwt {
         let tokendata = jsonwebtoken::decode(
             self.0,
             &DecodingKey::from_secret("secret".as_ref()),
-            &Validation::new(jsonwebtoken::Algorithm::HS256),
+            &Validation::new(jsonwebtoken::Algorithm::HS512),
         )?;
+        debug!("Tokendata could be extracted {:?}", tokendata);
 
         let claims: Claims = tokendata.claims;
         let id = tokendata
             .header
             .extras
             .get("id")
-            .expect("a valid token always contains an id");
+            .ok_or(jsonwebtoken::errors::ErrorKind::InvalidToken)?;
 
         Ok(ObjectId::from_str(id).expect("a valid jwt cannot contain an invalid mongo id"))
     }
@@ -159,17 +185,22 @@ impl FromRequest for UserSession {
             .headers()
             .get("Authorization")
             .and_then(|v| v.to_str().ok());
+        debug!("Entering session check with {:?}", auth_header);
 
         if let Some(header_value) = auth_header {
             if let Some(token) = header_value.strip_prefix("Bearer ") {
                 let id: Result<ObjectId, _> = Jwt(token.to_string()).try_into();
+
+                debug!("Result from JWT {:?}", id);
 
                 match id {
                     Ok(id) => return ready(Ok(UserSession { id })),
                     Err(_) => return ready(Err(HttpError::InvalidToken)),
                 }
             }
+            debug!("Auth header does not start with 'Bearer '. Request invalid!");
         }
+        debug!("No auth header. Request invalid!");
 
         ready(Err(HttpError::InvalidToken))
     }
