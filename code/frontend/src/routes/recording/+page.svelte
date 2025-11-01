@@ -1,4 +1,6 @@
 <script lang="ts">
+	import {onMount} from "svelte";
+
 	let isCameraActive = false;
 	let capturedImage: string | null = null;
 	let stream: MediaStream | null = null;
@@ -44,31 +46,44 @@
 			a.click();
 		}
 	}
+
+	onMount(() => startCamera())
 </script>
 
-<div class="recording-page">
-    <h1>Take litter picture</h1>
+<div class="min-h-screen bg-base-200">
+    <div class="hero">
+        <div class="hero-content">
+            <div class="max-w-md">
+                <h1 class="text-5xl font-bold">Take litter picture</h1>
+            </div>
+        </div>
+    </div>
 
-    <video bind:this={videoElement} playsinline
-           muted
-           autoplay style="display: {isCameraActive ? 'block' : 'none'}"></video>
-    <canvas bind:this={canvasElement} style="display: none;"></canvas>
+    <div class="flex flex-col justify-center items-center">
 
-	{#if capturedImage}
-		<img src={capturedImage} alt="Captured litter" />
-	{/if}
+        <div class="flex-row mb-8">
+            <video bind:this={videoElement} playsinline
+                   muted
+                   autoplay style="display: {isCameraActive ? 'block' : 'none'}"></video>
+            <canvas bind:this={canvasElement} style="display: none;"></canvas>
 
-    <div class="controls">
-        {#if !isCameraActive && !capturedImage}
-            <button on:click={startCamera}>Start Camera</button>
-        {:else if isCameraActive}
-            <button on:click={takePicture}>Take Picture</button>
-            <button on:click={stopCamera}>Cancel</button>
-        {/if}
+            {#if capturedImage}
+                <img src={capturedImage} alt="Captured litter" />
+            {/if}
+        </div>
 
-        {#if capturedImage}
-            <button on:click={downloadPicture}>Download Picture</button>
-			<button on:click={() => { capturedImage = null; startCamera(); }}>Take Another</button>
-        {/if}
+        <div class="controls flex-row">
+            {#if !isCameraActive && !capturedImage}
+                <button class="btn btn-secondary flex justify-center" on:click={startCamera}>Allow Camera</button>
+            {:else if isCameraActive}
+                <button class="btn btn-secondary" on:click={takePicture}>Take Picture</button>
+            {/if}
+
+            {#if capturedImage}
+                <button on:click={downloadPicture}>Download Picture</button>
+                <button on:click={() => { capturedImage = null; startCamera(); }}>Take Another</button>
+            {/if}
+        </div>
+
     </div>
 </div>
