@@ -1,5 +1,5 @@
 <script>
-    import "../app.css";
+    //import "../app.css";
 </script>
 
 <div class="min-h-screen bg-base-200">
@@ -9,6 +9,7 @@
             <div class="max-w-md">
                 <h1 class="text-5xl font-bold">Delitter</h1>
                 <a href="/tracking" class="btn btn-secondary">Start</a>
+                <a href="/recording" class="btn btn-secondary">Recording Test Page</a>
             </div>
         </div>
     </div>
