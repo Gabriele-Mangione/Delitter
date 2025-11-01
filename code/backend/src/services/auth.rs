@@ -86,7 +86,22 @@ pub async fn signin(
 ) -> Option<(ObjectId, Jwt)> {
     let users = db.collection::<User>("users");
 
-    let user: User = users.find_one(doc! { "username": &user }).await.unwrap()?;
+    let user: Result<Option<User>, _> = users.find_one(doc! { "username": &user }).await;
+
+    let user = match user {
+        Ok(u) => u,
+        Err(e) => {
+            error!("Error when searching for username in db: {}", e);
+            return None;
+        }
+    };
+    let user = match user {
+        Some(u) => u,
+        None => {
+            info!("Username not found in db!");
+            return None;
+        }
+    };
 
     let parsed_hash = PasswordHash::new(&user.password_hash).unwrap();
     let argon2 = Argon2::default();
