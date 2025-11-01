@@ -1,5 +1,6 @@
 <script>
     //import "../app.css";
+    import logo from '$lib/assets/logo_with_text.svg';
 </script>
 
 <div class="min-h-screen bg-base-200">
@@ -7,7 +8,7 @@
     <div class="hero min-h-[40vh] bg-base-200">
         <div class="hero-content text-center">
             <div class="max-w-md">
-                <h1 class="text-5xl font-bold">Delitter</h1>
+                <img src={logo} alt="App Logo" class="mx-auto mb-4 w-48" />
                 <a href="/tracking" class="btn btn-secondary">Start</a>
                 <a href="/recording" class="btn btn-secondary">Recording Test Page</a>
             </div>
