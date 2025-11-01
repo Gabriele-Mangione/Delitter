@@ -53,6 +53,29 @@ pub async fn root_redirect() -> impl Responder {
         .finish()
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct VersionResponse {
+    version: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/version",
+    responses(
+        (status = 200, description = "Get application version", body = VersionResponse)
+    ),
+    tag = "Health"
+)]
+#[get("/version")]
+pub async fn version() -> impl Responder {
+    let version = std::fs::read_to_string("version.txt")
+        .unwrap_or_else(|_| "development".to_string())
+        .trim()
+        .to_string();
+
+    web::Json(VersionResponse { version })
+}
+
 #[utoipa::path(
     get,
     path = "/v1/alive",

@@ -53,6 +53,8 @@ jobs:
           file: ./code/backend/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            GIT_HASH=${{ github.sha }}
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}

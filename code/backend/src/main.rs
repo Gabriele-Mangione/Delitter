@@ -18,6 +18,7 @@ mod services;
 #[openapi(
     paths(
         handlers::alive,
+        handlers::version,
         handlers::auth::signup,
         handlers::auth::signin,
         handlers::litter::create_litter,
@@ -34,6 +35,7 @@ mod services;
             handlers::litter::LitterCreateResponse,
             handlers::litter::Claims,
             handlers::ErrorResponse,
+            handlers::VersionResponse,
         )
     ),
     tags(
@@ -102,6 +104,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(handlers::root_redirect)
             .service(handlers::alive)
+            .service(handlers::version)
             .service(handlers::auth::signin)
             .service(handlers::auth::signup)
             .service(handlers::litter::create_litter)
