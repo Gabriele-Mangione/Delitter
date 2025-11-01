@@ -14,7 +14,10 @@ pub struct Litter {
     pub lat: f64,
     pub file: Option<Binary>,
     pub r#type: String,
-    pub tags: Vec<String>,
+    pub category: String,
+    pub material: String,
+    pub weight: f64,
+    pub brand: String,
     pub time_stamp: mongodb::bson::DateTime,
 }
 
@@ -37,7 +40,10 @@ impl Litter {
                 "litter.$.lat": self.lat,
                 "litter.$.file": self.file.clone(),  // Updated to use Binary
                 "litter.$.type": &self.r#type,
-                "litter.$.tags": &self.tags,
+                "litter.$.category": &self.category,
+                "litter.$.material": &self.material,
+                "litter.$.weight": &self.weight,
+                "litter.$.brand": &self.brand,
                 "litter.$.time_stamp": self.time_stamp,
             }
         };

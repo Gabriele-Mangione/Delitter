@@ -28,8 +28,11 @@ pub struct LitterData {
     lng: f64,
     #[schema(format = "binary")]
     file: Vec<u8>,
+    category: String,
+    material: String,
+    weight: f64,
+    brand: String,
     r#type: String,
-    tags: Vec<String>,
 }
 
 impl Into<Litter> for LitterData {
@@ -44,7 +47,10 @@ impl Into<Litter> for LitterData {
             lat: self.lat,
             file: Some(file_binary),
             r#type: self.r#type,
-            tags: self.tags,
+            category: self.category,
+            material: self.material,
+            weight: self.weight,
+            brand: self.brand,
             _id: ObjectId::new(),
             time_stamp: mongodb::bson::DateTime::now(),
         }
@@ -104,10 +110,14 @@ pub async fn create_litter(
         let res = crate::services::analyzer::analyze(file).await.unwrap();
 
         for obj in res {
-            litter.tags.push(format!(
-                "Category {}  Material {}  Weigth{} (g) Brand{}",
-                obj.category, obj.material, obj.weight_g_estimate, obj.brand
-            ));
+            litter.category = obj.category;
+            litter.material = obj.material;
+            litter.weight = obj.weight_g_estimate;
+            litter.brand = obj.brand;
+            // litter.tags.push(format!(
+            //     "Category {}  Material {}  Weigth{} (g) Brand{}",
+            //     obj.category, obj.material, obj.weight_g_estimate, obj.brand
+            // ));
         }
 
         let _ = litter.persist(&db, usersession.id).await;
@@ -124,7 +134,10 @@ pub struct LitterGetData {
     #[schema(format = "binary")]
     file: Vec<u8>,
     r#type: String,
-    tags: Vec<String>,
+    category: String,
+    material: String,
+    weight: f64,
+    brand: String,
     id: String,
     date: String,
 }
@@ -136,7 +149,10 @@ impl Into<LitterGetData> for Litter {
             lng: self.lng,
             file: self.file.map(|f| f.bytes).unwrap_or_default(),
             r#type: self.r#type,
-            tags: self.tags,
+            category: self.category,
+            material: self.material,
+            weight: self.weight,
+            brand: self.brand,
             id: self._id.to_hex(),
             date: self.time_stamp.to_string(),
         }
