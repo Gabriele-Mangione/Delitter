@@ -8,6 +8,27 @@
 	let videoElement: HTMLVideoElement;
 	let canvasElement: HTMLCanvasElement;
 
+	const locationOptions = {
+		enableHighAccuracy: true,
+		timeout: 5000,
+		maximumAge: 0,
+	};
+
+	function success(pos) {
+		const crd = pos.coords;
+
+		console.log("Your current position is:");
+		console.log(`Latitude : ${crd.latitude}`);
+		console.log(`Longitude: ${crd.longitude}`);
+		console.log(`More or less ${crd.accuracy} meters.`);
+
+		sendLitterRequest(canvasElement, crd.latitude, crd.longitude)
+	}
+
+	function error(err) {
+		console.warn(`ERROR(${err.code}): ${err.message}`);
+	}
+
 	async function startCamera() {
 		try {
 			stream = await navigator.mediaDevices.getUserMedia({
@@ -29,7 +50,7 @@
 			context?.drawImage(videoElement, 0, 0);
 			capturedImage = canvasElement.toDataURL('image/png');
 			stopCamera();
-			sendLitterRequest(canvasElement)
+			navigator.geolocation.getCurrentPosition(success, error, locationOptions);
 		}
 	}
 
@@ -40,7 +61,7 @@
 		}
 	}
 
-	function sendLitterRequest(canvas) {
+	function sendLitterRequest(canvas, lat, lng) {
 		canvas.toBlob(async (blob) => {
 			if (!blob) {
 				console.error("Failed to create blob from canvas.");
@@ -54,7 +75,7 @@
 				const arrayBuffer = reader.result;
 				const byteArray = new Uint8Array(arrayBuffer);
 				console.log("Image converted to Uint8Array. Size:", byteArray.length, "bytes.");
-				uploadAsJson(Array.from(byteArray), blob.type);
+				uploadAsJson(Array.from(byteArray), blob.type, lat, lng);
 			};
 
 			reader.readAsArrayBuffer(blob);
@@ -62,15 +83,16 @@
 		}, 'image/jpeg', 0.9);
 	}
 
-	async function uploadAsJson(byteArray, mimeType) {
+	async function uploadAsJson(byteArray, mimeType, lat, lng) {
 		const base = PUBLIC_BACKEND_URL;
 		const api_url = `${base}/protected/litter`
 
         const payload = {
-			"lat": 1.0,
-			"lng": 2.0,
+			"lat": lat,
+			"lng": lng,
 			"file": byteArray,
 			"type": mimeType,
+            "tags": []
 		}
 
 		try {
@@ -130,7 +152,7 @@
         {/if}
 
         {#if capturedImage}
-            <button class="btn btn-secondary" on:click={sendLitterRequest(canvasElement)}>Retry Upload</button>
+            <button class="btn btn-secondary" on:click={() => navigator.geolocation.getCurrentPosition(success, error, locationOptions)}>Retry Upload</button>
         {/if}
     </div>
 
