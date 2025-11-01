@@ -56,7 +56,7 @@
             navigator.geolocation.getCurrentPosition((position) =>
             {
 				const { longitude: lng, latitude: lat } = position.coords;
-                sendLitterRequest(canvasElement, lng, lat)
+                sendLitterRequest(canvasElement, lat, lng)
             }, (err) => {
 				console.error("Error obtaining geolocation:", err);
 				uploadFailed = true;
