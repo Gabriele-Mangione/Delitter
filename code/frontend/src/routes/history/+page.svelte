@@ -2,5 +2,5 @@
 </script>
 
 <div class="recording-page">
-    <h1>HISTORY</h1>
+    <h1>Hier kommt eine Map + eine History an eingescannten Bildern rein</h1>
 </div>
