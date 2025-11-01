@@ -37,6 +37,6 @@ impl ResponseError for HttpError {
 }
 
 #[get("/v1/alive")]
-pub async fn signup() -> impl Responder {
+pub async fn alive() -> impl Responder {
     web::Html::new("OK".to_string())
 }

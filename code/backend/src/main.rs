@@ -24,18 +24,23 @@ async fn main() -> std::io::Result<()> {
     let db_name = "main";
     let db = client.database(&db_name);
 
-    info!("App listening over 0.0.0.0:8080");
+    let port: u16 = env::var("PORT")
+        .map(|p| p.parse().expect("Port must be a valid 16 bit integer"))
+        .unwrap_or(8080);
+
+    info!("App listening over 0.0.0.0:{port}");
 
     HttpServer::new(move || {
         App::new()
             .wrap(Cors::permissive())
             .app_data(web::Data::new(db.clone()))
+            .service(handlers::alive)
             .service(handlers::auth::signin)
             .service(handlers::auth::signup)
             .service(handlers::litter::create_litter)
             .service(handlers::litter::get_litter)
     })
-    .bind(("0.0.0.0", 8080))?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }
