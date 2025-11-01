@@ -48,16 +48,15 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Copy the application code
 COPY . .
 
-# Expose the API port
-ENV APP_PORT=${PORT:-8080}
-EXPOSE ${APP_PORT}
+# Expose the API port. The image exposes 8080 as the default service port.
+EXPOSE 8080
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 
-# Health check: use $PORT if set (Render sets a dynamic PORT). Fallback to 8000 for local runs.
+# Health check: use $PORT if set (Render sets a dynamic PORT). Fallback to 8080 for local runs.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import os,sys,urllib.request,sys as _s; port=os.environ.get('PORT','8000'); url='http://127.0.0.1:%s/health'%port; req=urllib.request.Request(url); urllib.request.urlopen(req, timeout=5); _s.exit(0)" || exit 1
+    CMD python -c "import os,sys,urllib.request,sys as _s; port=os.environ.get('PORT','8080'); url='http://127.0.0.1:%s/health'%port; req=urllib.request.Request(url); urllib.request.urlopen(req, timeout=5); _s.exit(0)" || exit 1
 
-# Run the API server: bind to $PORT (Render provides this env var). Fallback to 8000.
-CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${APP_PORT}"]
+# Run the API server: bind to $PORT (Render provides this env var). Fallback to 8080.
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8080}"]

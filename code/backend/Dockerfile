@@ -23,8 +23,15 @@ RUN set -eux; \
 	if [ -n "${CORP_CA_B64}" ]; then \
 		echo "Installing corporate CA cert from build-arg"; \
 		mkdir -p /usr/local/share/ca-certificates; \
-		echo "${CORP_CA_B64}" | base64 -d > /usr/local/share/ca-certificates/corp.crt; \
-		update-ca-certificates; \
+		# Try to decode the base64 payload; if decoding fails, print a helpful error
+		if printf '%s' "${CORP_CA_B64}" | base64 -d > /usr/local/share/ca-certificates/corp.crt 2>/tmp/ca-decode.err; then \
+			update-ca-certificates; \
+		else \
+			echo "ERROR: Failed to decode CORP_CA_B64. Base64 decode output:" >&2; \
+			sed -n '1,200p' /tmp/ca-decode.err >&2 || true; \
+			echo "Please ensure CORP_CA_B64 is valid base64 of a PEM file." >&2; \
+			exit 1; \
+		fi; \
 	else \
 		echo "No corporate CA provided, skipping CA install"; \
 	fi
@@ -64,10 +71,11 @@ RUN set -eux; \
 		update-ca-certificates || true; \
 	fi
 
-# Expose a default port (can be overridden)
-ENV APP_PORT=${PORT:-8080}
-EXPOSE ${APP_PORT}
+# Expose the default port for the service. The runtime binary will read $PORT if provided
+# when invoked; the image exposes 8080 as the default service port.
+EXPOSE 8080
 
 # Make binary executable and run it. Use a non-root friendly permission.
 RUN chmod +x ./myapp || true
-CMD ["sh", "-c", "./myapp --port $APP_PORT"]
+# Use shell expansion at runtime to prefer $PORT if set, otherwise default to 8080.
+CMD ["sh", "-c", "./myapp --port ${PORT:-8080}"]
