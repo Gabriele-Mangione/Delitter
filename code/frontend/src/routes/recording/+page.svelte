@@ -46,6 +46,7 @@
 	}
 
 	function upload() {
+		uploadFailed = false;
 		isWaitingForUpload = true;
 		if (longitude && latitude) {
 			sendLitterRequest(canvasElement, latitude, longitude);
@@ -204,19 +205,18 @@
             </button>
         {/if}
 
-        {#if isWaitingForUpload && !isWaitingForLocation}
+        {#if isWaitingForUpload && !isWaitingForLocation && !uploadFailed}
             <span class="align-[-8px] align-middle loading loading-ring loading-lg"/>
             <span class="">Waiting for upload...</span>
         {/if}
 
-        {#if isWaitingForLocation}
+        {#if isWaitingForLocation && !uploadFailed}
             <span class="align-[-8px] loading loading-ring loading-lg"/>
             <span class="">Waiting for location...</span>
         {/if}
 
         {#if uploadFailed}
-            <span class="ml-4">Upload failed</span>
-            <button class="btn btn-secondary" on:click={() => upload()}>Retry Upload</button>
+            <button class="btn btn-secondary" on:click={() => upload()}>Upload Failed - Retry Upload</button>
         {/if}
     </div>
 
