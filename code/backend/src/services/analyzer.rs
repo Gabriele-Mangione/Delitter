@@ -22,7 +22,11 @@ pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std:
         .post(format!("{uri}/v1/analyze"))
         .multipart(form)
         .send()
-        .await?
+        .await
+        .map_err(|e| {
+            eprintln!("Request error: {:?}", e);
+            e
+        })?
         .text()
         .await?;
 
