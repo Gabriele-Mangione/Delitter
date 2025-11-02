@@ -16,9 +16,7 @@ pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std:
 
     //let client = Client::new();
 
-    let client = Client::builder()
-    .danger_accept_invalid_certs(true)
-    .build()?;
+    let client = Client::builder().build()?;
 
     let uri = env::var("IMAGE_RECOGNITION_URL").expect("IMAGE_RECOGNITION_URL not set");
 
@@ -36,7 +34,7 @@ pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std:
 
     debug!("{response}");
 
-    let response: Response = match serde_json::from_str(&response){
+    let response: Response = match serde_json::from_str(&response) {
         Ok(r) => r,
         Err(e) => {
             error!("Error while parsing image {}", e);
