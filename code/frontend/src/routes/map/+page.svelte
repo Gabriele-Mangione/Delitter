@@ -190,6 +190,8 @@
     );
 
     applyBaseLayer();
+    map.attributionControl.setPrefix(false);
+    map.attributionControl.setPosition('topright');
 
     // keep Leaflet sized to the container
     ro = new ResizeObserver(() => map?.invalidateSize());
