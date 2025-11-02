@@ -86,7 +86,7 @@
 {:else if error}
     <p class="error">{error}</p>
 {:else}
-    {#if items.length == 0}
+    {#if items.length === 0}
         <div class="flex flex-col gap-2 items-center mt-8">
             <div class="flex flex-col text-center mt-8">
                 <span class="text-xl">You have not recorded any litter yet.</span>
