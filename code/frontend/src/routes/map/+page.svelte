@@ -213,15 +213,27 @@
     themeObs?.disconnect();
     mql?.removeEventListener?.('change', applyBaseLayer);
   });
+
+  // centralize these so MapContainer and the floating button stay in sync
+  const NAV_H = 56;   // navbar height (px)
+  const DOCK_H = 72;  // bottom Dock height (px)
 </script>
 
 <!-- No h-screen anywhere; the container owns the height -->
-<MapContainer bind:el={mapWrap} top={56} bottom={72} className="bg-base-100">
+<MapContainer bind:el={mapWrap} top={NAV_H} bottom={DOCK_H} className="bg-base-100">
   <div class="absolute inset-0" bind:this={mapDiv} aria-label="Delitter map"></div>
 
-  <!-- Floating “Locate me” button -->
-  <div class="absolute right-3 bottom-3 z-[1001]">
-    <button class="btn btn-circle btn-accent shadow-md" on:click={locateMe} aria-label="Locate me" title="Locate me">
+  <!-- Floating “Locate me” button (kept above the Dock & safe-area) -->
+  <div
+    class="absolute right-3 z-[1001] pointer-events-auto"
+    style={`bottom: calc(${DOCK_H}px + env(safe-area-inset-bottom, 0px) + 12px)`}
+  >
+    <button
+      class="btn btn-circle btn-accent shadow-md"
+      on:click={locateMe}
+      aria-label="Locate me"
+      title="Locate me"
+    >
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 3v3m0 12v3M3 12h3m12 0h3M12 7a5 5 0 100 10 5 5 0 000-10z"
               stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -232,6 +244,7 @@
 
 <style>
   :global(.leaflet-container){ width:100%; height:100%; font-family:system-ui,sans-serif; }
+  :global(.leaflet-control-container){ z-index: 900; }
 
   /* popup */
   :global(.dl-popup .leaflet-popup-content){ margin:0; padding:0; }

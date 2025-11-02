@@ -1,34 +1,36 @@
 <script lang="ts">
-    import '../app.css';
-    import Dock from "$lib/Dock.svelte";
-    import favicon from '$lib/assets/favicon_small.png';
-    import NavBar from "$lib/NavBar.svelte";
-    import LoginRegister from "$lib/LoginRegister.svelte";
-
-    // Authentication
-    import { auth } from '$lib/stores/auth';
-    $: loggedIn = $auth !== null;
+  import '../app.css';
+  import Dock from '$lib/Dock.svelte';
+  import favicon from '$lib/assets/favicon_small.png';
+  import NavBar from '$lib/NavBar.svelte';
+  import LoginRegister from '$lib/LoginRegister.svelte';
+  import { auth } from '$lib/stores/auth';
+  $: loggedIn = $auth !== null;
 </script>
 
 <svelte:head>
-    <link rel="icon" href={favicon}/>
+  <link rel="icon" href={favicon} />
 </svelte:head>
 
-
 {#if loggedIn}
-  <!-- keep the nav on top of Leaflet controls -->
+  <!-- keep navbar above the map -->
   <header class="sticky top-0 z-[2000] bg-base-100">
     <NavBar />
   </header>
 
-  <div class="m-2 mb-[64px]">
-    <slot/>
+  <!-- reserve vertical space for the Dock so content (map) doesn't sit beneath it -->
+  <div class="m-2 pb-[72px]">
+    <slot />
   </div>
 
-  <Dock/>
+  <!-- Dock floats above everything -->
+  <footer class="fixed bottom-0 inset-x-0 z-[3000]">
+    <Dock />
+  </footer>
 {:else}
-  <LoginRegister/>
+  <LoginRegister />
 {/if}
+
 
 
 <style>
