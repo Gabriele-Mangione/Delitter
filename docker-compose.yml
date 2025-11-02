@@ -1,0 +1,70 @@
+version: '3.8'
+
+# IMPORTANT: Before running docker-compose up, build the Rust backend:
+#   cd code/backend && cargo build --release && cd ../..
+
+services:
+  # Unified Delitter Service (Rust + Python)
+  delitter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - GIT_HASH=${GIT_HASH:-development}
+    container_name: delitter
+    ports:
+      - "8080:8080"
+    environment:
+      # MongoDB connection (using service name)
+      - MONGO_URI=mongodb://mongo:27017/delitter
+
+      # Service ports
+      - PORT=8080
+      - IMAGE_RECOGNITION_PORT=8081
+      - IMAGE_RECOGNITION_URL=http://localhost:8081
+
+      # API Keys (load from .env file or environment)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+      # Logging
+      - RUST_LOG=${RUST_LOG:-info}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/alive"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: delitter-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      # Optional: Add authentication
+      # - MONGO_INITDB_ROOT_USERNAME=admin
+      # - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=delitter
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  default:
+    name: delitter-network

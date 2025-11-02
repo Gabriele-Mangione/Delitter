@@ -1,0 +1,64 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+documentation/
+assets/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Frontend (not needed in backend container)
+code/frontend/
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.Python
+**/.venv
+**/venv/
+**/.env
+code/image_recognition/.env
+**/*.egg-info
+
+# Rust
+# Exclude target directory except for the release binary we need
+code/backend/target/debug
+code/backend/target/doc
+code/backend/target/.rustc_info.json
+code/backend/target/CACHEDIR.TAG
+code/backend/Cargo.lock
+**/*.rs.bk
+
+# Docker
+**/Dockerfile
+**/.dockerignore
+docker-compose*.yml
+
+# Database
+mongo-data/
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+**/.cache
+
+# Keep individual component Dockerfiles out
+code/backend/Dockerfile
+code/image_recognition/Dockerfile
