@@ -9,6 +9,8 @@ WORKDIR /workspace
 # Copy the entire repository into the container
 COPY . .
 
+RUN systemctl start docker
+
 RUN docker-compose build
 
 # Default command: Run Docker Compose to start services
