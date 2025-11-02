@@ -102,7 +102,15 @@ pub async fn signin(
 ) -> Option<(ObjectId, Jwt)> {
     let users = db.collection::<User>("users");
 
-    let user: Result<Option<User>, _> = users.find_one(doc! { "username": &user }).await;
+    let user: Result<Option<User>, _> = users
+        .find_one(doc! { "username": &user })
+        .projection(doc! {
+            "username":1,
+            "password_hash":1,
+            "_id":1,
+
+        })
+        .await;
 
     let user = match user {
         Ok(u) => u,

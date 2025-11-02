@@ -15,6 +15,7 @@ pub struct User {
     pub username: String,
     pub password_hash: String,
 
+    #[serde(default)]
     pub litter: Vec<Litter>,
 }
 
