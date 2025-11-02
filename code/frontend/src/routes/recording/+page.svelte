@@ -204,7 +204,7 @@
             </button>
         {/if}
 
-        {#if isWaitingForUpload}
+        {#if isWaitingForUpload && !isWaitingForLocation}
             <span class="align-[-8px] align-middle loading loading-ring loading-lg"/>
             <span class="">Waiting for upload...</span>
         {/if}
