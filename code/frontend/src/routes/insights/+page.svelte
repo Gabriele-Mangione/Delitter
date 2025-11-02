@@ -104,7 +104,7 @@
 
   onMount(loadFindings);
 
-  // ---------- Helpers ----------
+  // helpers
   function normalizeDateStr(s: string): string {
     if (!s) return new Date().toISOString().slice(0,10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -113,7 +113,7 @@
     return d.toISOString().slice(0,10);
   }
   function parseLocalDate(dateStr: string): Date {
-    return new Date(dateStr + 'T12:00:00Z'); // Noon-UTC vermeidet Off-by-one
+    return new Date(dateStr + 'T12:00:00Z');
   }
   function daysAgo(n: number): string {
     const d = new Date();
@@ -129,7 +129,6 @@
     return parseLocalDate(d) >= cutoff;
   }
 
-  // ---------- Reactive derived data ----------
   $: filtered = findings.filter((f) => inRange(f.createdAt, range));
 
   // totals
@@ -196,7 +195,7 @@
   $: materialTotal = materialEntries.reduce((s, [,n]) => s+n, 0);
   type Seg = { label: string; percent: number; colorVar: string; };
 
-  // robuste Farb-Variablen (DaisyUI)
+  // robust color handling
   const paletteVars = ['--p','--a','--su','--in','--se','--wa','--er'];
 
   $: donutSegs = materialEntries.map(([label, n], i) => ({
@@ -218,7 +217,7 @@
     return `conic-gradient(${parts.join(',')})`;
   }
 
-  // ---------- GitHub-style contribution heatmap (last 12 weeks) ----------
+  // github style contribution heatmap
   const WEEKS = 12;
   const MS_DAY = 24 * 3600 * 1000;
   function iso(d: Date) { return d.toISOString().slice(0,10); }
@@ -373,7 +372,7 @@
         <div class="card-body">
           <h2 class="card-title">Materials</h2>
           <div class="flex items-center gap-6">
-            <!-- Donut + inner Loch -->
+            <!-- donut pie -->
             <div class="relative">
               <div
                 class="w-28 h-28 rounded-full border border-base-300"
