@@ -41,7 +41,9 @@ code/backend/Cargo.lock
 **/*.rs.bk
 
 # Docker
-**/Dockerfile
+# Exclude subdirectory Dockerfiles but keep root Dockerfile
+code/backend/Dockerfile
+code/image_recognition/Dockerfile
 **/.dockerignore
 docker-compose*.yml
 
@@ -58,7 +60,3 @@ logs/
 *.tmp
 *.temp
 **/.cache
-
-# Keep individual component Dockerfiles out
-code/backend/Dockerfile
-code/image_recognition/Dockerfile

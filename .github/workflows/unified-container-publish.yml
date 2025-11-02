@@ -94,7 +94,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile  # Uses root Dockerfile only (not code/backend/Dockerfile or code/image_recognition/Dockerfile)
           push: true
           platforms: linux/amd64,linux/arm64
           build-args: |
