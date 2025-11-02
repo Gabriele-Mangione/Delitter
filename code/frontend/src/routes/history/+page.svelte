@@ -119,7 +119,7 @@
                                 {#each item.finding.entries as entry, i (i)}
                                     <li class="flex flex-col p-0 gap-0.5">
                                         <p class="block font-bold">{i+1} {entry.category ?? 'unknown'}</p>
-                                        <div class="flex flex-row gap-1">
+                                        <div class="flex flex-row flex-wrap leading-none gap-1">
                                             {#if entry.brand}
                                                 <div class="badge badge-md badge-ghost">{entry.brand}</div>
                                             {/if}
