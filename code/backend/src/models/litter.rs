@@ -1,11 +1,19 @@
 use actix_web::web;
 use mongodb::{
     Collection, Database,
-    bson::{Binary, doc, oid::ObjectId},
+    bson::{self, Binary, doc, oid::ObjectId},
 };
 use serde::{Deserialize, Serialize};
 
 use super::user::User;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Entry {
+    pub category: Option<String>,
+    pub material: Option<String>,
+    pub weight: Option<f64>,
+    pub brand: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Litter {
@@ -14,10 +22,8 @@ pub struct Litter {
     pub lat: f64,
     pub file: Option<Binary>,
     pub r#type: String,
-    pub category: Option<String>,
-    pub material: Option<String>,
-    pub weight: Option<f64>,
-    pub brand: Option<String>,
+    #[serde(default)]
+    pub entries: Vec<Entry>,
     pub time_stamp: mongodb::bson::DateTime,
 }
 
@@ -40,10 +46,7 @@ impl Litter {
                 "litter.$.lat": self.lat,
                 "litter.$.file": self.file.clone(),  // Updated to use Binary
                 "litter.$.type": &self.r#type,
-                "litter.$.category": &self.category,
-                "litter.$.material": &self.material,
-                "litter.$.weight": &self.weight,
-                "litter.$.brand": &self.brand,
+                "litter.$.entries": bson::to_bson(&self.entries).ok()?,
                 "litter.$.time_stamp": self.time_stamp,
             }
         };

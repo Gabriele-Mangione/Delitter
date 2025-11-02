@@ -43,10 +43,7 @@ impl Into<Litter> for LitterData {
             lat: self.lat,
             file: Some(file_binary),
             r#type: self.r#type,
-            category: None,
-            material: None,
-            weight: None,
-            brand: None,
+            entries: vec![],
             _id: ObjectId::new(),
             time_stamp: mongodb::bson::DateTime::now(),
         }
@@ -106,20 +103,26 @@ pub async fn create_litter(
         let res = match crate::services::analyzer::analyze(file).await {
             Ok(r) => r,
             Err(e) => {
-                log::error!("Error while analysing image{}", e);
+                log::error!("Error while analysing image: {}", e);
                 return;
             }
         };
 
+        // Can Metal Pepsi 5g
+        // Bottle Plastic Rivella 50g
+        //
+        // Category  Bottle | Can
+        // Material  Plastic | Metal
+        // Weigth    50g | 5g
+        // brand     Rivella |
+
         for obj in res {
-            litter.category = obj.category;
-            litter.material = obj.material;
-            litter.weight = Some(obj.weight_g_estimate);
-            litter.brand = obj.brand;
-            // litter.tags.push(format!(
-            //     "Category {}  Material {}  Weigth{} (g) Brand{}",
-            //     obj.category, obj.material, obj.weight_g_estimate, obj.brand
-            // ));
+            litter.entries.push(models::litter::Entry {
+                category: obj.category,
+                material: obj.material,
+                weight: Some(obj.weight_g_estimate),
+                brand: obj.brand,
+            });
         }
 
         let _ = litter.persist(&db, usersession.id).await;
@@ -130,16 +133,20 @@ pub async fn create_litter(
 }
 
 #[derive(Debug, Serialize, ToSchema)]
+pub struct LitterEntryGetData {
+    category: Option<String>,
+    material: Option<String>,
+    weight: Option<f64>,
+    brand: Option<String>,
+}
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LitterGetData {
     lat: f64,
     lng: f64,
     #[schema(format = "binary")]
     file: Vec<u8>,
     r#type: String,
-    category: Option<String>,
-    material: Option<String>,
-    weight: Option<f64>,
-    brand: Option<String>,
+    entries: Vec<LitterEntryGetData>,
     id: String,
     date: String,
 }
@@ -151,10 +158,17 @@ impl Into<LitterGetData> for Litter {
             lng: self.lng,
             file: self.file.map(|f| f.bytes).unwrap_or_default(),
             r#type: self.r#type,
-            category: self.category,
-            material: self.material,
-            weight: self.weight,
-            brand: self.brand,
+
+            entries: self
+                .entries
+                .into_iter()
+                .map(|el| LitterEntryGetData {
+                    category: el.category,
+                    material: el.material,
+                    weight: el.weight,
+                    brand: el.brand,
+                })
+                .collect(),
             id: self._id.to_hex(),
             date: self.time_stamp.to_string(),
         }
