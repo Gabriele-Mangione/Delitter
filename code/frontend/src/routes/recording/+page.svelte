@@ -161,6 +161,9 @@
 
     onDestroy(() => {
 		stopCamera();
+		if (navigator.geolocation && geoWatchId) {
+			navigator.geolocation.clearWatch(geoWatchId);
+        }
 	})
 </script>
 
