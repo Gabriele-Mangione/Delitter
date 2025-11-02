@@ -46,14 +46,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Build Rust backend
-        run: |
-          cd code/backend
-          cargo build --release --bin myapp
-          cd ../..
-        env:
-          CARGO_INCREMENTAL: 0
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
