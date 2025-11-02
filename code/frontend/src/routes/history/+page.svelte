@@ -112,13 +112,13 @@
                         </div>
                     {:else}
                         <div>
-<!--                            <div class="flex flex-row gap-1 font-bold">-->
-<!--                                <span>{item.finding.entries.length}</span><span>items</span>-->
-<!--                            </div>-->
+                            <!--                            <div class="flex flex-row gap-1 font-bold">-->
+                            <!--                                <span>{item.finding.entries.length}</span><span>items</span>-->
+                            <!--                            </div>-->
                             <ul class="flex flex-col gap-3">
                                 {#each item.finding.entries as entry, i (i)}
                                     <li class="flex flex-col p-0 gap-0.5">
-                                        <p class="block font-bold">{i+1} {entry.category ?? 'unknown'}</p>
+                                        <p class="block font-bold">{entry.category ?? 'unknown'}</p>
                                         <div class="flex flex-row flex-wrap leading-none gap-1">
                                             {#if entry.brand}
                                                 <div class="badge badge-md badge-ghost">{entry.brand}</div>
