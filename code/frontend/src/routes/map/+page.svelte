@@ -7,15 +7,23 @@
   import { PUBLIC_BACKEND_URL } from '$env/static/public';
   import { auth } from '$lib/stores/auth';
   import { get } from 'svelte/store';
+  import type {Finding} from "$lib/types/finding";
 
-  type Finding = {
-    id: string;
+  // backend record + entries (new format to cater to backend changes)
+  type BackendEntry = {
+    category?: string | null;
+    material?: string | null;
+    weight?: number | null;
+    brand?: string | null;
+  };
+  type BackendRecord = {
+    id?: string;
     lat: number;
     lng: number;
-    weight: number | null;
-    category: string;
-    material: string;
-    brand?: string | null;
+    type?: string;
+    file?: unknown;
+    date?: string;
+    entries?: BackendEntry[] | null;
   };
 
   const demoFindings: Finding[] = [
@@ -24,7 +32,7 @@
     { id: '3', lat: 47.5584, lng: 7.5920, weight: 20, category: 'Plastic Bottle', material: 'Plastic', brand: 'Fanta' }
   ];
 
-  // Leaflet refs
+  // leaflet refs
   let mapDiv: HTMLDivElement;
   let mapWrap: HTMLDivElement;       // from MapContainer (el)
   let ro: ResizeObserver | null = null;
@@ -84,29 +92,47 @@
     }
   }
 
+  // fetch + flatten entries from backend
   async function loadFindings() {
     const BASE = (PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
     const token = (auth.getToken?.() ?? get(auth)) as string | null;
 
-    const res = await fetch(`${BASE}/protected/litter`, {
-      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-    });
-    if (!res.ok) throw new Error(`GET /protected/litter -> ${res.status}`);
+    try {
+      const res = await fetch(`${BASE}/protected/litter`, {
+        headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error(`GET /protected/litter -> ${res.status}`);
 
-    const apiData: Array<{
-      id?: string; lat: number; lng: number; weight?: number | null;
-      category: string; material: string; brand?: string | null;
-    }> = await res.json();
+      const apiData: BackendRecord[] = await res.json();
 
-    renderMarkers(
-      apiData.map((d) => ({
-        id: d.id ?? `${d.lat},${d.lng}`,
-        lat: d.lat, lng: d.lng,
-        weight: d.weight ?? null,
-        category: d.category, material: d.material,
-        brand: d.brand ?? null
-      }))
-    );
+      const flat: Finding[] = [];
+      for (const rec of apiData ?? []) {
+        const lat = Number((rec as any).lat);
+        const lng = Number((rec as any).lng);
+        if (!isFinite(lat) || !isFinite(lng)) continue;
+
+        const baseId = String(rec.id ?? `${lat},${lng}`);
+        const entries = Array.isArray(rec.entries) ? rec.entries : [];
+
+        // each littering -> marker on map (hence, ignore image if no trash)
+        entries.forEach((e, idx) => {
+          flat.push({
+            id: `${baseId}-${idx}`,
+            lat, lng,
+            weight: e?.weight ?? null,
+            category: (e?.category ?? 'Unknown') || 'Unknown',
+            material: (e?.material ?? 'Unknown') || 'Unknown',
+            brand: e?.brand ?? null
+          });
+        });
+      }
+
+      renderMarkers(flat.length ? flat : demoFindings);
+    } catch (e) {
+      console.warn('Backend fetch failed, showing demo markers.', e);
+      renderMarkers(demoFindings);
+    }
   }
 
   const isDarkTheme = () => {
@@ -122,7 +148,6 @@
     if (currentBase && map.hasLayer(currentBase)) map.removeLayer(currentBase);
     next.addTo(map);
     currentBase = next;
-    // make sure tiles redraw after layer switch / size changes
     setTimeout(() => map?.invalidateSize(), 0);
   }
 
