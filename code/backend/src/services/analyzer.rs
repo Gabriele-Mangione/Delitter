@@ -14,7 +14,11 @@ pub async fn analyze(bytes: Vec<u8>) -> Result<Vec<DetectedObject>, Box<dyn std:
 
     let form = Form::new().part("file", part);
 
-    let client = Client::new();
+    //let client = Client::new();
+
+    let client = Client::builder()
+    .danger_accept_invalid_certs(true)
+    .build()?;
 
     let uri = env::var("IMAGE_RECOGNITION_URL").expect("IMAGE_RECOGNITION_URL not set");
 
