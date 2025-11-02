@@ -4,7 +4,7 @@
   import { auth } from '$lib/stores/auth';
   import { get } from 'svelte/store';
 
-  // ---------- Types ----------
+  // types 
   type Finding = {
     id: string;
     lat: number;
@@ -13,10 +13,10 @@
     category: string;
     material: string;
     brand?: string | null;
-    createdAt: string;              // yyyy-mm-dd
+    createdAt: string;
   };
 
-  // Backend record + entries (neues Format)
+  // backend record + entries (new format)
   type BackendEntry = {
     category?: string | null;
     material?: string | null;

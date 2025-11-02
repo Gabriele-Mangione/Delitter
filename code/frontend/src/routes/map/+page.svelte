@@ -7,9 +7,8 @@
   import { PUBLIC_BACKEND_URL } from '$env/static/public';
   import { auth } from '$lib/stores/auth';
   import { get } from 'svelte/store';
-  import type {Finding} from "$lib/types/finding";
 
-  // backend record + entries (new format to cater to backend changes)
+  // backend types 
   type BackendEntry = {
     category?: string | null;
     material?: string | null;
@@ -26,10 +25,23 @@
     entries?: BackendEntry[] | null;
   };
 
-  const demoFindings: Finding[] = [
-    { id: '1', lat: 47.5596, lng: 7.5886, weight: 40, category: 'Beverage Can', material: 'Aluminium', brand: 'Smirnoff' },
-    { id: '2', lat: 47.5591, lng: 7.5859, weight: 20, category: 'Snack Wrapper', material: 'Plastic' },
-    { id: '3', lat: 47.5584, lng: 7.5920, weight: 20, category: 'Plastic Bottle', material: 'Plastic', brand: 'Fanta' }
+  // demo fallback
+  const demoRecords: BackendRecord[] = [
+    {
+      id: 'demo-1',
+      lat: 47.5596, lng: 7.5886, date: '2025-11-02',
+      entries: [
+        { category: 'Beverage Can', material: 'Aluminium', weight: 40, brand: 'Smirnoff' },
+        { category: 'Snack Wrapper', material: 'Plastic',   weight: 20, brand: 'Doritos' }
+      ]
+    },
+    {
+      id: 'demo-2',
+      lat: 47.5584, lng: 7.5920, date: '2025-11-03',
+      entries: [
+        { category: 'Plastic Bottle', material: 'Plastic', weight: 20, brand: 'Fanta' }
+      ]
+    }
   ];
 
   // leaflet refs
@@ -54,46 +66,124 @@
   let userAccuracy: any = null;
   let geoWatchId: number | null = null;
 
-  // helpers
-  const escapeHtml = (s: string) =>
+  // helpers 
+  const esc = (s: string) =>
     s.replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]!));
+  const fmtWeight = (w: number | null | undefined) => w == null ? '' : `${w} g`;
+  const norm = (s?: string) => (s && s.trim()) || 'Unknown';
 
-  function popupHtml(f: Finding) {
-    const brand = f.brand ? `<span class="badge badge-outline">${escapeHtml(f.brand)}</span>` : '';
-    const material = `<span class="badge badge-success badge-outline">${escapeHtml(f.material)}</span>`;
-    const weight = f.weight != null ? `<span class="text-xs text-base-content/60">${f.weight} g</span>` : '';
-    return `
+  // popup UI (navigierbar)
+  function bindNavigablePopup(marker: any, rec: BackendRecord) {
+  const items = (rec.entries ?? []).slice();
+  const hasItems = items.length > 0;
+
+  const el = document.createElement('div');
+  el.className = 'dl-popup-content';
+
+  // fix click propagation
+  if (L?.DomEvent) {
+    L.DomEvent.disableClickPropagation(el);
+    L.DomEvent.disableScrollPropagation(el);
+  }
+
+  let idx = 0;
+
+  const render = () => {
+    const total = items.length;
+    const cur = items[idx];
+
+    const headerBadges = hasItems ? `
+      <div class="flex flex-wrap items-center gap-2">
+        ${cur?.brand ? `<span class="badge badge-outline">${esc(cur!.brand!)}</span>` : ''}
+        ${cur?.material ? `<span class="badge badge-success badge-outline">${esc(cur!.material!)}</span>` : ''}
+        ${cur?.weight != null ? `<span class="text-xs text-base-content/60">${fmtWeight(cur!.weight)}</span>` : ''}
+      </div>
+    ` : '';
+
+    el.innerHTML = `
       <div class="card bg-base-100 text-base-content">
         <div class="card-body p-4">
-          <h3 class="card-title text-base">${escapeHtml(f.category)}</h3>
-          <div class="flex flex-wrap items-center gap-2">
-            ${brand}
-            ${material}
-            ${weight}
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="card-title text-base m-0">
+              ${hasItems ? esc(norm(cur?.category ?? 'Unknown')) : 'No detections'}
+            </h3>
+            ${rec.date ? `<div class="text-xs text-base-content/60">${esc(String(rec.date).slice(0, 10))}</div>` : ''}
+          </div>
+
+          ${headerBadges}
+
+          <div class="mt-3 flex items-center justify-between">
+            <button class="btn btn-xs btn-ghost dl-nav" data-action="prev" ${total <= 1 ? 'disabled' : ''}>
+              ⬅️
+            </button>
+            <div class="text-xs text-base-content/60">${hasItems ? `${idx + 1} / ${total}` : ''}</div>
+            <button class="btn btn-xs btn-ghost dl-nav" data-action="next" ${total <= 1 ? 'disabled' : ''}>
+              ➡️
+            </button>
           </div>
         </div>
       </div>
     `;
-  }
+  };
 
-  function renderMarkers(findings: Finding[]) {
+  // 
+  el.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    const btn = (ev.target as HTMLElement)?.closest('.dl-nav') as HTMLElement | null;
+    if (!btn) return;
+
+    const total = items.length;
+    if (total <= 1) return;
+
+    const action = btn.dataset.action;
+    if (action === 'prev') idx = (idx - 1 + total) % total;
+    else if (action === 'next') idx = (idx + 1) % total;
+
+    render();
+  }, { capture: true }); 
+
+  render();
+
+  marker.bindPopup(el, {
+    className: 'dl-popup',
+    maxWidth: 320,
+    offset: [0, -6],
+    keepInView: true
+  });
+}
+
+  // render: one marker per record / location
+  function renderMarkersForRecords(records: BackendRecord[]) {
     if (!L || !markersLayer) return;
     markersLayer.clearLayers();
 
-    for (const f of findings) {
-      const m = L.marker([f.lat, f.lng], { title: f.category, icon: delitterIcon });
-      m.bindPopup(popupHtml(f), { className: 'dl-popup', maxWidth: 320, offset: [0, -6] });
+    const pts: [number, number][] = [];
+
+    for (const rec of records) {
+      const lat = Number((rec as any).lat);
+      const lng = Number((rec as any).lng);
+      if (!isFinite(lat) || !isFinite(lng)) continue;
+
+      const entries = Array.isArray(rec.entries) ? rec.entries : [];
+      const title = `${entries.length || 0} detection${entries.length === 1 ? '' : 's'}`;
+
+      const m = L.marker([lat, lng], { title, icon: delitterIcon });
+      bindNavigablePopup(m, rec);
       m.addTo(markersLayer);
+
+      pts.push([lat, lng]);
     }
 
-    if (findings.length) {
-      const bounds = L.latLngBounds(findings.map((f) => [f.lat, f.lng]));
+    if (pts.length) {
+      const bounds = L.latLngBounds(pts);
       map.fitBounds(bounds.pad(0.2), { animate: false });
     }
   }
 
-  // fetch + flatten entries from backend
-  async function loadFindings() {
+  // fetch records from backend 
+  async function loadRecordsAndRender() {
     const BASE = (PUBLIC_BACKEND_URL ?? '').replace(/\/+$/, '');
     const token = (auth.getToken?.() ?? get(auth)) as string | null;
 
@@ -105,33 +195,10 @@
       if (!res.ok) throw new Error(`GET /protected/litter -> ${res.status}`);
 
       const apiData: BackendRecord[] = await res.json();
-
-      const flat: Finding[] = [];
-      for (const rec of apiData ?? []) {
-        const lat = Number((rec as any).lat);
-        const lng = Number((rec as any).lng);
-        if (!isFinite(lat) || !isFinite(lng)) continue;
-
-        const baseId = String(rec.id ?? `${lat},${lng}`);
-        const entries = Array.isArray(rec.entries) ? rec.entries : [];
-
-        // each littering -> marker on map (hence, ignore image if no trash)
-        entries.forEach((e, idx) => {
-          flat.push({
-            id: `${baseId}-${idx}`,
-            lat, lng,
-            weight: e?.weight ?? null,
-            category: (e?.category ?? 'Unknown') || 'Unknown',
-            material: (e?.material ?? 'Unknown') || 'Unknown',
-            brand: e?.brand ?? null
-          });
-        });
-      }
-
-      renderMarkers(flat.length ? flat : demoFindings);
+      renderMarkersForRecords(apiData ?? []);
     } catch (e) {
       console.warn('Backend fetch failed, showing demo markers.', e);
-      renderMarkers(demoFindings);
+      renderMarkersForRecords(demoRecords);
     }
   }
 
@@ -229,8 +296,8 @@
 
     markersLayer = L.layerGroup().addTo(map);
 
-    try { await loadFindings(); }
-    catch (e) { console.warn('Backend fetch failed, showing demo markers.', e); renderMarkers(demoFindings); }
+    try { await loadRecordsAndRender(); }
+    catch (e) { console.warn('Backend fetch failed, showing demo markers.', e); renderMarkersForRecords(demoRecords); }
   });
 
   onDestroy(() => {
@@ -250,7 +317,7 @@
 <MapContainer bind:el={mapWrap} top={NAV_H} bottom={DOCK_H} className="bg-base-100">
   <div class="absolute inset-0" bind:this={mapDiv} aria-label="Delitter map"></div>
 
-  <!-- Floating “Locate me” button (kept above the Dock & safe-area) -->
+  <!-- Floating “Locate me” button -->
   <div
     class="absolute right-3 z-[1001] pointer-events-auto"
     style={`bottom: calc(${DOCK_H}px + env(safe-area-inset-bottom, 0px) + 12px)`}
@@ -307,4 +374,6 @@
     70%{transform:translate(-50%,-50%) scale(1.4);opacity:.05}
     100%{opacity:0}
   }
+
+  :global(.dl-popup-content .card-title){ line-height: 1.2; }
 </style>
