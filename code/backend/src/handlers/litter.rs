@@ -43,10 +43,10 @@ impl Into<Litter> for LitterData {
             lat: self.lat,
             file: Some(file_binary),
             r#type: self.r#type,
-            category: "".to_string(),
-            material: "".to_string(),
-            weight: 0.,
-            brand: "".to_string(),
+            category: None,
+            material: None,
+            weight: None,
+            brand: None,
             _id: ObjectId::new(),
             time_stamp: mongodb::bson::DateTime::now(),
         }
@@ -112,19 +112,10 @@ pub async fn create_litter(
         };
 
         for obj in res {
-            litter.category = match obj.category {
-                Some(o) => o,
-                None => "unknown".to_string(),
-            };
-            litter.material = match obj.material {
-                Some(o) => o,
-                None => "unknown".to_string(),
-            };
-            litter.weight = obj.weight_g_estimate;
-            litter.brand = match obj.brand {
-                Some(o) => o,
-                None => "unknown".to_string(),
-            };
+            litter.category = obj.category;
+            litter.material = obj.material;
+            litter.weight = Some(obj.weight_g_estimate);
+            litter.brand = obj.brand;
             // litter.tags.push(format!(
             //     "Category {}  Material {}  Weigth{} (g) Brand{}",
             //     obj.category, obj.material, obj.weight_g_estimate, obj.brand
@@ -145,10 +136,10 @@ pub struct LitterGetData {
     #[schema(format = "binary")]
     file: Vec<u8>,
     r#type: String,
-    category: String,
-    material: String,
-    weight: f64,
-    brand: String,
+    category: Option<String>,
+    material: Option<String>,
+    weight: Option<f64>,
+    brand: Option<String>,
     id: String,
     date: String,
 }

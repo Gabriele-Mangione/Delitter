@@ -14,10 +14,10 @@ pub struct Litter {
     pub lat: f64,
     pub file: Option<Binary>,
     pub r#type: String,
-    pub category: String,
-    pub material: String,
-    pub weight: f64,
-    pub brand: String,
+    pub category: Option<String>,
+    pub material: Option<String>,
+    pub weight: Option<f64>,
+    pub brand: Option<String>,
     pub time_stamp: mongodb::bson::DateTime,
 }
 
