@@ -1,0 +1,51 @@
+name: Docker-in-Docker with Docker Compose
+
+# Trigger the action on push or pull requests to the main branch
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  docker-dind:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu image
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3  # Checkout the repository to get the files
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2  # Set up Docker Buildx, useful for multi-platform builds
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2  # Log in to Docker Hub if you want to push the image
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t my-dind-image .  # Build the Docker image using your Dockerfile
+
+      - name: Build and push (GHCR)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./code
+          file: ./code/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            GIT_HASH=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          # Use registry-backed cache so subsequent workflow runs can reuse layers.
+          cache-from: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+            type=gha
+          cache-to: |
+            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+            type=gha,mode=max
