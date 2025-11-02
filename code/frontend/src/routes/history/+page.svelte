@@ -88,9 +88,6 @@
 {:else}
     {#if items.length == 0}
         <div class="flex flex-col gap-2 items-center mt-8">
-            <figure class="flex flex-col max-w-[200px] w-auto">
-                <img class="" src="/src/lib/assets/history_empty.png" alt="Garbage">
-            </figure>
             <div class="flex flex-col text-center mt-8">
                 <span class="text-xl">You have not recorded any litter yet.</span>
                 <span class="text-sm mt-1">Go to the recording tab to take some pictures!</span>
