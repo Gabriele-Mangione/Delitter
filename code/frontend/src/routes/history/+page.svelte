@@ -112,18 +112,29 @@
                         </div>
                     {:else}
                         <div>
-                            <div class="flex flex-row gap-1 font-bold">
-                                <span>{item.finding.entries.length}</span><span>items</span>
-                            </div>
-                            <ul class="list">
+<!--                            <div class="flex flex-row gap-1 font-bold">-->
+<!--                                <span>{item.finding.entries.length}</span><span>items</span>-->
+<!--                            </div>-->
+                            <ul class="flex flex-col gap-3">
                                 {#each item.finding.entries as entry, i (i)}
-                                    <li class="list-row p-0 flex flex-row gap-1">
-                                        <span>{entry.category} ({entry.material})</span>
+                                    <li class="flex flex-col p-0 gap-0.5">
+                                        <p class="block font-bold">{i+1} {entry.category ?? 'unknown'}</p>
+                                        <div class="flex flex-row gap-1">
+                                            {#if entry.brand}
+                                                <div class="badge badge-md badge-ghost">{entry.brand}</div>
+                                            {/if}
+                                            {#if entry.material}
+                                                <div class="badge badge-md badge-ghost">{entry.material}</div>
+                                            {/if}
+                                            {#if entry.weight && entry.weight !== 0}
+                                                <div class="badge badge-md badge-ghost">{entry.weight}g</div>
+                                            {/if}
+                                        </div>
                                     </li>
                                 {/each}
                             </ul>
                         </div>
-                        <div class="flex flex-row gap-1 opacity-60">
+                        <div class="flex flex-row gap-1 opacity-60 mt-2">
                             <span>{formatDate(item.date)}</span>
                         </div>
                     {/if}
