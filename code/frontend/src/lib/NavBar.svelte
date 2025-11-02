@@ -15,11 +15,16 @@
     function logout() {
         auth.clear();
     }
+
+    import logo from '$lib/assets/logo_notext.svg';
+
 </script>
 
 <div class="navbar bg-base-100">
-    <div class="flex-1">
-        <span class="text-2xl font-medium">{title}</span>
+    <div class="flex-1 flex items-center gap-3">
+        <img alt="The project logo" src={logo} class="w-10 h-10 object-contain" />
+        <!-- Force exact CSS variable color -->
+        <span class="text-2xl font-medium" style="color:var(--color-primary) !important">Delitter</span>
     </div>
     <div class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="btn btn-circle avatar">
