@@ -1,7 +1,7 @@
 <script lang="ts">
     import {onMount} from 'svelte';
     import {PUBLIC_BACKEND_URL} from "$env/static/public";
-    import type {Finding} from "$lib/types/finding";
+    import type {Finding, FindingEntry} from "$lib/types/finding";
 
     let items: HistoryEntry[] = [];
     let error = '';
@@ -58,18 +58,7 @@
             console.log({findings})
 
             items = findings.map((item: Finding) => {
-                const itemClone = { ...item }
-
-                if (!itemClone.brand) {
-                    itemClone.brand = "unknown brand"
-                }
-                if (!itemClone.category) {
-                    itemClone.category = "unknown category"
-                }
-                if (!itemClone.material) {
-                    itemClone.category = "unknown material"
-                }
-
+                const itemClone = {...item}
                 const bytes = new Uint8Array(itemClone.file)
                 const blob = new Blob([bytes], {type: 'image/jpeg'})
                 const url = URL.createObjectURL(blob)
@@ -107,23 +96,35 @@
         </div>
     {/if}
     <ul class="list bg-base-100 rounded-box shadow-md">
-        {#each items as item: HistoryEntry (item.finding.id)}
+        {#each items as item (item.finding.id)}
             <li class="list-row">
                 <div>
                     <img class="w-40 rounded-box" src="{item.image_url}"/>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <div class="font-bold text-lg">
-                        {item.finding.category}
-                        {#if item.finding.brand}&nbsp;({item.finding.brand}){/if}
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <div class="text-xs font-semibold opacity-60">
-                            <span class="uppercase">{item.finding.weight}</span><span class="">g</span>
+                <div class="flex flex-col justify-between">
+                    {#if item.finding.entries.length === 0}
+                        <div>
+                            <div class="flex flex-row gap-1 font-bold">
+                                <span>No litter detected in image.</span>
+                            </div>
                         </div>
-                        <div class="text-xs uppercase font-semibold opacity-60">{item.finding.material}</div>
-                        <div class="text-xs uppercase font-semibold opacity-60">{formatDate(item.date)}</div>
-                    </div>
+                    {:else}
+                        <div>
+                            <div class="flex flex-row gap-1 font-bold">
+                                <span>{item.finding.entries.length}</span><span>items</span>
+                            </div>
+                            <ul class="list">
+                                {#each item.finding.entries as entry, i (i)}
+                                    <li class="list-row p-0 flex flex-row gap-1">
+                                        <span>{entry.category} ({entry.material})</span>
+                                    </li>
+                                {/each}
+                            </ul>
+                        </div>
+                        <div class="flex flex-row gap-1 opacity-60">
+                            <span>{formatDate(item.date)}</span>
+                        </div>
+                    {/if}
                 </div>
                 <button aria-label="delete" class="btn btn-square btn-ghost">
                     <svg class="size-[1.2em]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
