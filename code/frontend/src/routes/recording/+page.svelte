@@ -14,6 +14,7 @@
 	let stream: MediaStream | null = null;
 	let videoElement: HTMLVideoElement;
 	let canvasElement: HTMLCanvasElement;
+	let fileInput: HTMLInputElement;
 
 	// Geolocation
 	let geoWatchId: number | null = null;
@@ -43,6 +44,46 @@
 			stopCamera();
             upload();
 		}
+	}
+
+	function triggerFileUpload() {
+		fileInput?.click();
+	}
+
+	async function handleFileUpload(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+
+		// Check if it's an image
+		if (!file.type.startsWith('image/')) {
+			console.error('Selected file is not an image');
+			return;
+		}
+
+		// Read the file and display it
+		const reader = new FileReader();
+		reader.onload = (e) => {
+			capturedImage = e.target?.result as string;
+
+			// Load image into canvas for upload
+			const img = new Image();
+			img.onload = () => {
+				const context = canvasElement.getContext('2d');
+				canvasElement.width = img.width;
+				canvasElement.height = img.height;
+				context?.drawImage(img, 0, 0);
+
+				// Stop camera if active and trigger upload
+				stopCamera();
+				upload();
+			};
+			img.src = capturedImage!;
+		};
+		reader.readAsDataURL(file);
+
+		// Clear the input so the same file can be selected again
+		input.value = '';
 	}
 
 	function upload() {
@@ -173,6 +214,13 @@
             bind:this={canvasElement}
             style="display: none;"
     ></canvas>
+    <input
+            type="file"
+            accept="image/*"
+            bind:this={fileInput}
+            on:change={handleFileUpload}
+            style="display: none;"
+    />
 
     <div class="w-full flex justify-center">
         {#if capturedImage}
@@ -191,7 +239,7 @@
     </div>
 
 
-    <div class="controls flex-row mt-3">
+    <div class="controls flex-row mt-3 gap-2 flex flex-wrap justify-center">
         {#if !isCameraActive && !capturedImage}
             <button class="btn btn-secondary flex justify-center" on:click={startCamera}>Allow Camera</button>
         {:else if isCameraActive}
@@ -205,6 +253,15 @@
                           d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z"/>
                 </svg>
                 Take Picture
+            </button>
+            <button class="btn btn-secondary" on:click={triggerFileUpload}>
+                <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="1.5"
+                     stroke="currentColor">
+                    <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+                </svg>
+                Upload Picture
             </button>
         {/if}
 

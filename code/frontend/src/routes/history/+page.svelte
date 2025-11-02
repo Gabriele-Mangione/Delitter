@@ -123,9 +123,9 @@
                                             {#if entry.material}
                                                 <div class="badge badge-md badge-ghost">{entry.material}</div>
                                             {/if}
-                                            <!--{#if entry.weight && entry.weight !== 0}-->
-                                            <!--    <div class="badge badge-md badge-ghost">{entry.weight}g</div>-->
-                                            <!--{/if}-->
+                                            {#if entry.weight_g_estimate && entry.weight_g_estimate !== 0}
+                                                <div class="badge badge-md badge-ghost">{entry.weight_g_estimate}g</div>
+                                            {/if}
                                         </div>
                                     </li>
                                 {/each}

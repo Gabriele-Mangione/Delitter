@@ -4,7 +4,7 @@ version: '3.8'
 #   cd code/backend && cargo build --release && cd ../..
 
 services:
-  # Unified Delitter Service (Rust + Python)
+  # Delitter Service (Rust Backend with Image Recognition)
   delitter:
     build:
       context: .
@@ -20,15 +20,12 @@ services:
 
       # Service ports
       - PORT=8080
-      - IMAGE_RECOGNITION_PORT=8081
-      - IMAGE_RECOGNITION_URL=http://localhost:8081
 
       # API Keys (load from .env file or environment)
       - OPENAI_API_KEY=${OPENAI_API_KEY}
 
       # Logging
       - RUST_LOG=${RUST_LOG:-info}
-      - PYTHONUNBUFFERED=1
     depends_on:
       mongo:
         condition: service_healthy

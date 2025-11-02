@@ -46,6 +46,11 @@ impl Into<Litter> for LitterData {
             entries: vec![],
             _id: ObjectId::new(),
             time_stamp: mongodb::bson::DateTime::now(),
+            analysis_counts: None,
+            analysis_total_items: None,
+            analysis_notes: None,
+            analysis_processing_time_ms: None,
+            analysis_model: None,
         }
     }
 }
@@ -99,31 +104,22 @@ pub async fn create_litter(
     }
 
     tokio::spawn(async move {
-        // Call your analyze function
-        let res = match crate::services::analyzer::analyze(file).await {
-            Ok(r) => r,
+        // Call image recognition function
+        let analysis = match crate::services::image_recognition::analyze_image(file).await {
+            Ok(a) => a,
             Err(e) => {
                 log::error!("Error while analysing image: {}", e);
                 return;
             }
         };
 
-        // Can Metal Pepsi 5g
-        // Bottle Plastic Rivella 50g
-        //
-        // Category  Bottle | Can
-        // Material  Plastic | Metal
-        // Weigth    50g | 5g
-        // brand     Rivella |
-
-        for obj in res {
-            litter.entries.push(models::litter::Entry {
-                category: obj.category,
-                material: obj.material,
-                weight: Some(obj.weight_g_estimate),
-                brand: obj.brand,
-            });
-        }
+        // Update litter with analysis results
+        litter.entries = analysis.entries;
+        litter.analysis_counts = analysis.counts;
+        litter.analysis_total_items = analysis.total_items;
+        litter.analysis_notes = analysis.notes;
+        litter.analysis_processing_time_ms = Some(analysis.processing_time_ms);
+        litter.analysis_model = Some(analysis.model);
 
         let _ = litter.persist(&db, usersession.id).await;
     });
@@ -134,10 +130,11 @@ pub async fn create_litter(
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LitterEntryGetData {
-    category: Option<String>,
-    material: Option<String>,
-    weight: Option<f64>,
+    category: String,
+    material: String,
+    weight_g_estimate: Option<f64>,
     brand: Option<String>,
+    confidence: f64,
 }
 #[derive(Debug, Serialize, ToSchema)]
 pub struct LitterGetData {
@@ -149,6 +146,16 @@ pub struct LitterGetData {
     entries: Vec<LitterEntryGetData>,
     id: String,
     date: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    analysis_counts: Option<std::collections::HashMap<String, i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    analysis_total_items: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    analysis_notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    analysis_processing_time_ms: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    analysis_model: Option<String>,
 }
 
 impl Into<LitterGetData> for Litter {
@@ -165,12 +172,18 @@ impl Into<LitterGetData> for Litter {
                 .map(|el| LitterEntryGetData {
                     category: el.category,
                     material: el.material,
-                    weight: el.weight,
+                    weight_g_estimate: el.weight_g_estimate,
                     brand: el.brand,
+                    confidence: el.confidence,
                 })
                 .collect(),
             id: self._id.to_hex(),
             date: self.time_stamp.to_string(),
+            analysis_counts: self.analysis_counts,
+            analysis_total_items: self.analysis_total_items,
+            analysis_notes: self.analysis_notes,
+            analysis_processing_time_ms: self.analysis_processing_time_ms,
+            analysis_model: self.analysis_model,
         }
     }
 }

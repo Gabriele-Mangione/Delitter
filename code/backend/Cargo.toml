@@ -2,12 +2,14 @@
 name = "backend"
 version = "0.1.0"
 edition = "2024"
+default-run = "myapp"
 
 [dependencies]
 actix-cors = "0.7.1"
 actix-web = "4.11.0"
 anyhow = "1.0.100"
 argon2 = "0.5.3"
+async-openai = "0.24"
 base64 = "0.22.1"
 derive_more = "2.0.1"
 dotenvy = "0.15.7"

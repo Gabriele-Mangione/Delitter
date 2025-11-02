@@ -18,10 +18,11 @@
 
   // Backend record + entries (neues Format)
   type BackendEntry = {
-    category?: string | null;
-    material?: string | null;
-    weight?: number | null;
+    category: string;
+    material: string;
+    weight_g_estimate?: number | null;
     brand?: string | null;
+    confidence: number;
   };
   type BackendRecord = {
     id?: string;
@@ -82,7 +83,7 @@
           flat.push({
             id: `${baseId}-${idx}`,
             lat, lng,
-            weight: e?.weight ?? null,
+            weight: e?.weight_g_estimate ?? null,
             category: (e?.category ?? 'Unknown') || 'Unknown',
             material: (e?.material ?? 'Unknown') || 'Unknown',
             brand: e?.brand ?? null,

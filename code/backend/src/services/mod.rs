@@ -1,5 +1,4 @@
 pub mod auth;
 pub mod litter;
-
-pub mod analyzer;
+pub mod image_recognition;
 

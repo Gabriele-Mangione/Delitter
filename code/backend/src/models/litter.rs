@@ -4,15 +4,17 @@ use mongodb::{
     bson::{self, Binary, doc, oid::ObjectId},
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::user::User;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
-    pub category: Option<String>,
-    pub material: Option<String>,
-    pub weight: Option<f64>,
+    pub category: String,
+    pub material: String,
+    pub weight_g_estimate: Option<f64>,
     pub brand: Option<String>,
+    pub confidence: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -25,6 +27,16 @@ pub struct Litter {
     #[serde(default)]
     pub entries: Vec<Entry>,
     pub time_stamp: mongodb::bson::DateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub analysis_counts: Option<HashMap<String, i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub analysis_total_items: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub analysis_notes: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub analysis_processing_time_ms: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub analysis_model: Option<String>,
 }
 
 impl Litter {
@@ -48,6 +60,11 @@ impl Litter {
                 "litter.$.type": &self.r#type,
                 "litter.$.entries": bson::to_bson(&self.entries).ok()?,
                 "litter.$.time_stamp": self.time_stamp,
+                "litter.$.analysis_counts": bson::to_bson(&self.analysis_counts).ok()?,
+                "litter.$.analysis_total_items": self.analysis_total_items,
+                "litter.$.analysis_notes": &self.analysis_notes,
+                "litter.$.analysis_processing_time_ms": self.analysis_processing_time_ms,
+                "litter.$.analysis_model": &self.analysis_model,
             }
         };
 
